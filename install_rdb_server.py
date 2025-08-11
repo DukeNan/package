@@ -61,7 +61,7 @@ class Command:
         result = subprocess.run(
             self.command,
             shell=True,
-            cwd=self.work_dir,
+            cwd=self.working_dir,
             executable="/bin/bash",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -85,18 +85,17 @@ class Installer:
             return False
         return True
 
-    def _check_rpm_installed(self) -> bool:
+    def _check_rpm_installed(self) -> subprocess.CompletedProcess:
         command = Command(
             [
                 "rpm -q aio | grep -oP 'aio-\\d+\\.\\d+\\.\\d+\\.\\d+'",
             ]
         )
         result = command.run()
-        if result.returncode != 0:
-            return False
-        return True
+        return result
 
     def _extract_tar_gz(self):
+        log.info(f"Extracting tar.gz: {self.package_tar_gz}")
         if not tarfile.is_tarfile(self.package_tar_gz):
             log.error(f"Failed to extract tar.gz: {self.package_tar_gz}")
             return
@@ -114,11 +113,17 @@ class Installer:
             log.error(f"Failed to install rpm: {result.stderr}")
 
     def run(self):
-        self._check_rpm_installed()
+        check_result = self._check_rpm_installed()
+        if check_result.returncode == 0:
+            log.info(
+                f"RPM {check_result.stdout.strip()} already installed, please remove it first."
+            )
+            return
+        log.info("Installing RPM...")
         self._extract_tar_gz()
         self._install_rpm()
 
 
 if __name__ == "__main__":
     installer = Installer()
-    installer._check_rpm_installed()
+    installer.run()
