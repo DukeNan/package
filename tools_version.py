@@ -11,7 +11,7 @@ import subprocess
 import sys
 from typing import Callable, List
 
-AIO_HOME = "/opt/aio"
+AIO_HOME = os.getenv("AIO_HOME", "/opt/aio")
 TOOL_PATH = f"{AIO_HOME}/airflow/tools"
 ARCH = os.uname().machine
 KERNEL_VERSION = os.uname().release
@@ -56,56 +56,56 @@ TOOLS = [
     {
         "name": "fs-cli",
         "path": f"{TOOL_PATH}/fs-tools/{ARCH}/fsclient/fs-cli",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: out.strip(),
     },
     {
         "name": "fsdeamon",
         "path": f"{TOOL_PATH}/fs-tools/{ARCH}/fsdeamon/fsdeamon",
-        "command": ["$path", f"-V"],
+        "command": ["$path", "-V"],
         "need_check": True,
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
     },
     {
         "name": "kernel",
         "path": f"{TOOL_PATH}/fs-tools/{ARCH}/kernel/{KERNEL_VERSION}/fsbackup.ko",
-        "command": ["modinfo", f"--field=version", "$path"],
+        "command": ["modinfo", "--field=version", "$path"],
         "need_check": True,
         "parse": lambda out: out.strip(),
     },
     {
         "name": "gmssl",
         "path": f"{TOOL_PATH}/gmssl/{ARCH}/gmssl",
-        "command": ["$path", f"version"],
+        "command": ["$path", "version"],
         "need_check": True,
         "parse": lambda out: parse_version(r"GmSSL\s*(\d+\.\d+\.\d+)", out),
     },
     {
         "name": "obk_ftp",
         "path": f"{TOOL_PATH}/obk_ftp/{ARCH}/FileTransferAgent",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: parse_version(r"version:\s*(\d{8})", out),
     },
     {
         "name": "zfsdeamon",
         "path": f"{TOOL_PATH}/s3-tools/{ARCH}/zfsdeamon/zfsdeamon",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
     },
     {
         "name": "afs-cli",
         "path": f"{TOOL_PATH}/s3-tools/{ARCH}/afs/afs-cli",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: parse_version(r"version\s*(\d+\.\d+\.\d+)", out),
     },
     {
         "name": "afsd",
         "path": f"{TOOL_PATH}/s3-tools/{ARCH}/afs/afsd",
-        "command": ["$path", f"--version", "x"],
+        "command": ["$path", "--version", "x"],
         "need_check": True,
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
     },
@@ -119,21 +119,21 @@ TOOLS = [
     {
         "name": "s3fs",
         "path": f"{TOOL_PATH}/s3-tools/{ARCH}/s3fs",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: parse_version(r".*?V(\d+\.\d+)", out),
     },
     {
         "name": "s3-tool",
         "path": f"{TOOL_PATH}/s3-tools/{ARCH}/s3-tool/s3-tool",
-        "command": ["$path", f"--version"],
+        "command": ["$path", "--version"],
         "need_check": True,
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
     },
     {
         "name": "lsof",
         "path": f"{TOOL_PATH}/sys/{ARCH}/lsof",
-        "command": ["$path", f"-v"],
+        "command": ["$path", "-v"],
         "need_check": True,
         "parse": lambda out: parse_version(r".*?revision:\s*(\d+\.\d+)", out),
     },
@@ -193,14 +193,21 @@ def parse_version(pattern: str, string: str) -> str:
     return None
 
 
-
 class ToolInfo:
-    def __init__(self, name: str, path: str, command: List[str], need_check: bool, parse: Callable[[str], str]):
+    def __init__(
+        self,
+        name: str,
+        path: str,
+        command: List[str],
+        need_check: bool,
+        parse: Callable[[str], str],
+    ):
         self.name = name
         self.path = path
         self.command = command
         self.need_check = need_check
         self.parse = parse
+
 
 class ToolCommand:
     def __init__(self, tool: ToolInfo):
@@ -221,7 +228,8 @@ class ToolCommand:
 
     def run(self):
         if not self.check_tool_path():
-            return None
+            log.error(f"[ERROR] 工具路径不存在: {self.tool.path}")
+            return "代码无法访问"
         work_dir = os.path.dirname(self.tool.path) if self.tool.need_check else None
         try:
             self.parse_command()
@@ -242,7 +250,7 @@ class ToolCommand:
             log.error(f"[ERROR] Command not found: {' '.join(self.tool.command)}")
         except Exception as e:
             log.error(f"[ERROR] Unknown error: {str(e)}")
-        return None
+        return "代码无法访问"
 
 
 def main():
@@ -251,8 +259,9 @@ def main():
         tool_command = ToolCommand(tool)
         version = tool_command.run()
         # print(f"{tool['name']}: {version}")
-        result[tool['name']] = version
+        result[tool["name"]] = version
     import json
+
     print("==========================")
     print(json.dumps(result))
     print("==========================")

@@ -1,11 +1,11 @@
 import hashlib
+import json
 import logging
 import os
 import sys
+import tarfile
 from enum import Enum
 from pathlib import Path
-import tarfile
-import json
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, padding
@@ -154,13 +154,13 @@ class PackageBuilder:
         PackageFilenameEnum.README.value,
     ]
 
-    def __init__(self, package_name: str=None, config_path=None):
+    def __init__(self, package_name: str = None, config_path=None):
         self.package_path = self._init_package_path()
         self.package_checksum = ""
         self.config = self._parse_config(config_path)
         self.package_name = self._init_package_name(package_name)
 
-    def _init_package_name(self, package_name: str=None):
+    def _init_package_name(self, package_name: str = None):
         if not package_name:
             package_name = self.config.get("package_name")
 
@@ -233,7 +233,7 @@ class PackageBuilder:
         install_script = "install_{}.py".format(self.config.get("package_type"))
         print("install_script: ", install_script)
         # 构建包
-        with tarfile.open(self.package_name, 'w:gz') as tar:
+        with tarfile.open(self.package_name, "w:gz") as tar:
             for file in self.PACKAGE_FILES:
                 if file == PackageFilenameEnum.BUILD:
                     tar.add(file, arcname=PackageFilenameEnum.PARSER.value)
@@ -241,6 +241,7 @@ class PackageBuilder:
                     tar.add(file)
             tar.add(install_script, arcname=PackageFilenameEnum.INSTALL.value)
         logger.info(f"Package built successfully: {self.package_name}")
+
 
 if __name__ == "__main__":
     builder = PackageBuilder()
