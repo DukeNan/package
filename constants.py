@@ -14,8 +14,12 @@ PROJECT_DIR = (
 PACKAGE_TAR_GZ = PROJECT_DIR.joinpath("package.tar.gz")
 # 解压后的目录
 PACKAGE_DIR = PROJECT_DIR.joinpath("package")
+# 磁盘空间阈值, 5G
+DISK_SPACE_THRESHOLD = 5 * 1024 * 1024 * 1024
+GB_SIZE = 1024 * 1024 * 1024
 
 TOOL_PATH = os.getenv("TOOL_PATH", "/opt/aio/airflow/tools")
+KERNEL_VERSION = os.uname().release
 
 
 class PackageFilenameEnum(str, Enum):

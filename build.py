@@ -2,9 +2,9 @@ import shutil
 import tarfile
 from pathlib import Path
 
-from constants import PROJECT_DIR
+from constants import PROJECT_DIR, PackageFilenameEnum
 from utils.command import Command
-from utils.verify import PackageBuilder, PackageFilenameEnum
+from utils.verify import PackageBuilder
 
 
 class BuildPackage:
@@ -21,6 +21,8 @@ class BuildPackage:
         """
         install_script_name = self.install_script.split(".")[0]
         pyinstaller_path = shutil.which("pyinstaller")
+        if not pyinstaller_path:
+            raise Exception("pyinstaller not found")
         command = Command([pyinstaller_path, "--onefile", self.install_script])
         print("command: ", " ".join(command.command))
         result = command.run(original=True)

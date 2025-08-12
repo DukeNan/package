@@ -1,7 +1,7 @@
-import subprocess
 import tarfile
 
 from constants import PROJECT_DIR, PackageFilenameEnum
+from utils.check import HostEnvironmentDetection
 from utils.command import Command
 from utils.log_base import logger
 from utils.verify import PackageBuilder
@@ -11,6 +11,7 @@ class Installer:
     def __init__(self):
         self.package_tar_gz = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         self.package_dir = PROJECT_DIR.joinpath("package")
+        self.host_environment_detection = HostEnvironmentDetection()
 
     def _verify_package(self) -> bool:
         try:
@@ -21,44 +22,50 @@ class Installer:
             return False
         return True
 
-    def _check_rpm_installed(self) -> subprocess.CompletedProcess:
+    def _check_rpm_installed(self) -> bool:
         command = Command(
             [
                 "rpm -q aio | grep -oP 'aio-\\d+\\.\\d+\\.\\d+\\.\\d+'",
             ]
         )
         result = command.run()
-        return result
+        if result.returncode == 0:
+            logger.info(
+                f"RPM {result.stdout.strip()} already installed, please remove it first."
+            )
+            return True
+        else:
+            logger.info(f"RPM not installed")
+            return False
 
-    def _extract_tar_gz(self):
+    def _extract_tar_gz(self) -> bool:
         logger.info(f"Extracting tar.gz: {self.package_tar_gz}")
         if not tarfile.is_tarfile(self.package_tar_gz):
             logger.error(f"Failed to extract tar.gz: {self.package_tar_gz}")
-            return
+            return False
         with tarfile.open(self.package_tar_gz, "r:gz") as tar:
             tar.extractall(path=self.package_dir)
             logger.info(f"Extracted tar.gz to: {self.package_dir}")
+        return True
 
-    def _install_rpm(self):
+    def _install_rpm(self) -> None:
         files = list(self.package_dir.glob("aio-*.rpm"))
         assert len(files) > 0, "No rpm files found"
         rpm_file = files[0]
-        command = Command(["rpm", "-ivh", rpm_file], timeout=None)
-        result = command.run()
+        command = Command(["rpm", "-ivh", rpm_file])
+        result = command.run(original=True)
         if result.returncode != 0:
             logger.error(f"Failed to install rpm: {result.stderr}")
 
-    def run(self):
+    def run(self) -> None:
+        if not self.host_environment_detection.check():
+            return
+        if self._check_rpm_installed():
+            return
         if not self._verify_package():
             return
-        check_result = self._check_rpm_installed()
-        if check_result.returncode == 0:
-            logger.info(
-                f"RPM {check_result.stdout.strip()} already installed, please remove it first."
-            )
+        if not self._extract_tar_gz():
             return
-        logger.info("Installing RPM...")
-        self._extract_tar_gz()
         self._install_rpm()
 
 

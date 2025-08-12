@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import sys
+from pathlib import Path
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, padding
@@ -46,12 +47,12 @@ class AESFileCryptoWithSalt:
         except Exception as e:
             raise RuntimeError(f"key derivation failed: {e}")
 
-    def encrypt_file(self, input_path: str, output_path: str):
+    def encrypt_file(self, input_path: Path, output_path: Path) -> None:
         try:
             if not input_path or not output_path:
                 raise ValueError("input and output path is empty")
 
-            if not os.path.exists(input_path):
+            if not input_path.exists():
                 raise FileNotFoundError(f"input file not found: {input_path}")
 
             salt = os.urandom(16)
@@ -86,12 +87,12 @@ class AESFileCryptoWithSalt:
             raise RuntimeError(f"file encryption failed: {e}")
         logger.info(f"File encrypted successfully: {output_path}")
 
-    def decrypt_file(self, input_path: str):
+    def decrypt_file(self, input_path: Path) -> str:
         try:
             if not input_path:
                 raise ValueError("input path is empty")
 
-            if not os.path.exists(input_path):
+            if not input_path.exists():
                 raise FileNotFoundError(f"input file not found: {input_path}")
 
             with open(input_path, "rb") as f_in:
@@ -141,33 +142,33 @@ class PackageBuilder:
         self.config = self._parse_config(config_path)
         self.package_name = self._init_package_name(package_name)
 
-    def _init_package_name(self, package_name: str = None):
+    def _init_package_name(self, package_name: str = None) -> str:
         if not package_name:
-            package_name = self.config.get("package_name")
+            package_name = self.config.get("package_name") or ""
 
         if not package_name.endswith(".tar.gz"):
             package_name = f"{package_name}.tar.gz"
 
         return package_name
 
-    def _init_package_path(self):
+    def _init_package_path(self) -> Path:
         package_path = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         if not package_path.exists():
             raise FileNotFoundError(f"Package file not found: {package_path}")
         return package_path
 
-    def _parse_config(self, config_path):
+    def _parse_config(self, config_path) -> dict:
         if not config_path:
             config_path = PROJECT_DIR.joinpath(PackageFilenameEnum.VERSION.value)
         with open(config_path, "r") as f:
             return json.load(f)
 
-    def _get_checksum(self):
+    def _get_checksum(self) -> str:
         if not self.package_path.exists() or not self.package_path.is_file():
             raise FileNotFoundError(f"Package file not found: {self.package_path}")
         return hashlib.sha256(self.package_path.read_bytes()).hexdigest()
 
-    def encrypt_verify_file(self):
+    def encrypt_verify_file(self) -> Path:
         """
         加密 verify.info 文件，并生成verify文件
         """
@@ -182,7 +183,7 @@ class PackageBuilder:
         aes_crypto.encrypt_file(verify_info_file_path, verify_file_path)
         return verify_file_path
 
-    def decrypt_verify_file(self):
+    def decrypt_verify_file(self) -> str:
         """
         解密 verify 文件，并生成 verify.info 文件
         """

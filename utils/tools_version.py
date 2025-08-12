@@ -3,7 +3,7 @@ from pathlib import Path
 from sys import platform
 from typing import Callable, List
 
-from constants import ARCH, KERNEL_VERSION, TOOL_PATH
+from constants import KERNEL_VERSION, TOOL_PATH
 from utils.command import Command
 from utils.log_base import logger
 
@@ -26,7 +26,7 @@ def parse_version(pattern: str, string: str) -> str:
     match = re.search(pattern, string)
     if match:
         return match.group(1)
-    return None
+    return ""
 
 
 ARCH = get_arch()
@@ -178,8 +178,8 @@ class ToolInfo:
 
     def _parse_command(self, command: List[str]) -> List[str]:
         return [
-            item.replace("$path", self.path) if "$path" in item else item
-            for item in self.command
+            item.replace("$path", self.path.as_posix()) if "$path" in item else item
+            for item in command
         ]
 
     @property
@@ -188,7 +188,7 @@ class ToolInfo:
 
 
 class ToolCommand:
-    def __init__(self, tool: ToolInfo):
+    def __init__(self, tool: dict):
         self.tool = ToolInfo(**tool)
 
     def check_tool_path(self) -> bool:
