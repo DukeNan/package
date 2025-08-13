@@ -123,7 +123,7 @@ class AESFileCryptoWithSalt:
                 decrypted_data += unpadder.update(decryptor.finalize())
                 decrypted_data += unpadder.finalize()
         except Exception:
-            raise ValueError(f"file has been modified, decryption failed.")
+            raise ValueError("file has been modified, decryption failed.")
         logger.info(f"File decrypted successfully: {input_path}")
         return decrypted_data.decode("utf-8")
 

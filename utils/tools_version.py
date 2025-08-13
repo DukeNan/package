@@ -1,9 +1,12 @@
+import platform
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from sys import platform
-from typing import Callable, List
+from typing import Any, Callable, Dict, List, Optional
 
-from constants import KERNEL_VERSION, TOOL_PATH
+from tabulate import tabulate
+
+from constants import KERNEL_VERSION, TOOLS_PATH
 from utils.command import Command
 from utils.log_base import logger
 
@@ -30,196 +33,362 @@ def parse_version(pattern: str, string: str) -> str:
 
 
 ARCH = get_arch()
-
-TOOLS = [
+"""
+{
+    # 工具名称
+    "name": "aio-oss",
+    # 工具路径
+    "path": "{tools_path}/aio-oss/{arch}/aio-oss",
+    # 工具查询版本信息命令
+    "command": ["cat", "$path"],
+    # 进程命令，用于判断工具进程是否存在
+    "processes_command": "ps -ef | grep 'aio-oss' | grep -v grep",
+    # 解析命令，用于解析工具版本信息
+    "parse": lambda out: out.strip(),
+    # 替换目录，用于替换工具路径中的目录
+    "replace_dirs": [
+        {
+            "path": "{tools_path}/aio-oss",
+            "path_type": "dir",
+        }
+    ],
+},
+"""
+TOOLS: List[Dict[str, Any]] = [
     {
         "name": "aio-oss",
-        "path": f"{TOOL_PATH}/aio-oss/{ARCH}/aio-oss",
-        "command": ["cat", "$path"],
-        "need_check": True,
-        "parse": lambda out: out.strip(),
+        "path": "{tools_path}/aio-oss/{arch}/aio-oss",
+        "command": ["$path", "--version"],
+        "processes_command": "ps -ef | grep 'aio-oss' | grep -v grep",
+        "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/aio-oss",
+                "path_type": "dir",
+            }
+        ],
     },
-    # {
-    #     "name": "bwlimit",
-    #     "path": f"{TOOL_PATH}/bwlimit/{ARCH}/bwlimit_tools",
-    #     "command": ["cat", "$path"],
-    #     "need_check": True,
-    #     "parse": lambda out: out.strip(),
-    # },
+    {
+        "name": "bwlimit",
+        "path": "{tools_path}/bwlimit/{arch}/bwlimit_tools",
+        "command": None,
+        "processes_command": None,
+        "parse": None,
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/bwlimit",
+                "path_type": "dir",
+            }
+        ],
+    },
     {
         "name": "aio-speed",
-        "path": f"{TOOL_PATH}/rpc/{ARCH}/aio-speed",
+        "path": "{tools_path}/rpc/{arch}/aio-speed",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": None,
         "parse": lambda out: out.strip(),
+        "replace_dirs": None,
     },
     {
         "name": "aio-speedd",
-        "path": f"{TOOL_PATH}/rpc/{ARCH}/aio-speedd",
+        "path": "{tools_path}/rpc/{arch}/aio-speedd",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep 'aio-speedd' | grep -v grep",
         "parse": lambda out: out.strip(),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/rpc",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "dm_ftp",
-        "path": f"{TOOL_PATH}/dm_ftp/{ARCH}/dm-ftp",
+        "path": "{tools_path}/dm_ftp/{arch}/dm-ftp",
         "command": ["$path", "-v"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep 'dm-ftp' | grep -v grep",
         "parse": lambda out: parse_version(r"version:.*?(\d{8})", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/dm_ftp",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "fs-cli",
-        "path": f"{TOOL_PATH}/fs-tools/{ARCH}/fsclient/fs-cli",
+        "path": "{tools_path}/fs-tools/{arch}/fsclient/fs-cli",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": None,
         "parse": lambda out: out.strip(),
+        "replace_dirs": None,
     },
     {
         "name": "fsdeamon",
-        "path": f"{TOOL_PATH}/fs-tools/{ARCH}/fsdeamon/fsdeamon",
+        "path": "{tools_path}/fs-tools/{arch}/fsdeamon/fsdeamon",
         "command": ["$path", "-V"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep './fsdeamon' | grep -v grep",
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/fs-tools",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "kernel",
-        "path": f"{TOOL_PATH}/fs-tools/{ARCH}/kernel/{KERNEL_VERSION}/fsbackup.ko",
+        "path": "{tools_path}/fs-tools/{arch}/kernel/{kernel_version}/fsbackup.ko",
         "command": ["modinfo", "--field=version", "$path"],
-        "need_check": True,
+        "processes_command": "lsmod | grep fsbackup",
         "parse": lambda out: out.strip(),
+        "replace_dirs": None,
     },
     {
         "name": "gmssl",
-        "path": f"{TOOL_PATH}/gmssl/{ARCH}/gmssl",
+        "path": "{tools_path}/gmssl/{arch}/gmssl",
         "command": ["$path", "version"],
-        "need_check": True,
+        "processes_command": None,
         "parse": lambda out: parse_version(r"GmSSL\s*(\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/gmssl",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "obk_ftp",
-        "path": f"{TOOL_PATH}/obk_ftp/{ARCH}/FileTransferAgent",
+        "path": "{tools_path}/obk_ftp/{arch}/FileTransferAgent",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep './FileTransferAgent' | grep -v grep",
         "parse": lambda out: parse_version(r"version:\s*(\d{8})", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/obk_ftp",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "zfsdeamon",
-        "path": f"{TOOL_PATH}/s3-tools/{ARCH}/zfsdeamon/zfsdeamon",
+        "path": "{tools_path}/s3-tools/{arch}/zfsdeamon/zfsdeamon",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep './zfsdeamon' | grep -v grep",
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/zfsdeamon",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "afs-cli",
-        "path": f"{TOOL_PATH}/s3-tools/{ARCH}/afs/afs-cli",
+        "path": "{tools_path}/s3-tools/{arch}/afs/afs-cli",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": None,
         "parse": lambda out: parse_version(r"version\s*(\d+\.\d+\.\d+)", out),
+        "replace_dirs": None,
     },
     {
         "name": "afsd",
-        "path": f"{TOOL_PATH}/s3-tools/{ARCH}/afs/afsd",
+        "path": "{tools_path}/s3-tools/{arch}/afs/afsd",
         "command": ["$path", "--version", "x"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep 'afsd' | grep -v grep",
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/afs",
+                "path_type": "dir",
+            }
+        ],
     },
-    # {
-    #     "name": "mc",
-    #     "path": f"{TOOL_PATH}/s3-tools/{ARCH}/mc",
-    #     "command": ["$path", f"--version"],
-    #     "need_check": True,
-    #     "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
-    # },
+    {
+        "name": "mc",
+        "path": "{tools_path}/s3-tools/{arch}/mc",
+        "command": ["$path", f"--version"],
+        "processes_command": None,
+        "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/mc",
+                "path_type": "file",
+            }
+        ],
+    },
     {
         "name": "s3fs",
-        "path": f"{TOOL_PATH}/s3-tools/{ARCH}/s3fs",
+        "path": "{tools_path}/s3-tools/{arch}/s3fs",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep 's3fs' | grep -v grep",
         "parse": lambda out: parse_version(r".*?V(\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/s3fs",
+                "path_type": "file",
+            }
+        ],
     },
     {
         "name": "s3-tool",
-        "path": f"{TOOL_PATH}/s3-tools/{ARCH}/s3-tool/s3-tool",
+        "path": "{tools_path}/s3-tools/{arch}/s3-tool/s3-tool",
         "command": ["$path", "--version"],
-        "need_check": True,
+        "processes_command": "ps -ef | grep 's3-tool' | grep -v grep",
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/s3-tool",
+                "path_type": "dir",
+            }
+        ],
     },
     {
         "name": "lsof",
-        "path": f"{TOOL_PATH}/sys/{ARCH}/lsof",
+        "path": "{tools_path}/sys/{arch}/lsof",
         "command": ["$path", "-v"],
-        "need_check": True,
+        "processes_command": None,
         "parse": lambda out: parse_version(r".*?revision:\s*(\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/sys",
+                "path_type": "dir",
+            }
+        ],
     },
-    # {
-    #     "name": "xbsa",
-    #     "path": f"{TOOL_PATH}/sys/{ARCH}/xbsa",
-    #     "command": ["$path", f"--version"],
-    #     "need_check": True,
-    #     "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
-    # },
+    {
+        "name": "zfs",
+        "path": "{tools_path}/s3-tools/{arch}/zfs/zfs",
+        "command": ["$path", "--version"],
+        "processes_command": None,
+        "parse": lambda out: parse_version(r"-(\d+\.\d+\.\d+\-\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/s3-tools/{arch}/s3-tool/zfs",
+                "path_type": "dir",
+            }
+        ],
+    },
+    {
+        "name": "xbsa",
+        "path": "{tools_path}/sys/{arch}/xbsa",
+        "command": None,
+        "processes_command": None,
+        "parse": None,
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/xbsa",
+                "path_type": "dir",
+            }
+        ],
+    },
 ]
 
 
+@dataclass
 class ToolInfo:
-    def __init__(
-        self,
-        name: str,
-        path: str,
-        command: List[str],
-        need_check: bool,
-        parse: Callable[[str], str],
-    ):
-        self.name = name
-        self.path = Path(path)
-        self.command = self._parse_command(command)
-        self.need_check = need_check
-        self.parse = parse
+    name: str
+    path: Path
+    command: Optional[List[str]]
+    processes_command: Optional[str]
+    parse: Optional[Callable[[str], str]]
+    replace_dirs: Optional[List[dict]]
+    tools_path: str
+    arch: str = ARCH
+    kernel_version: str = KERNEL_VERSION
 
-    def _parse_command(self, command: List[str]) -> List[str]:
-        return [
+    def __post_init__(self):
+        self.path = Path(
+            self.path.format(
+                tools_path=self.tools_path,
+                arch=self.arch,
+                kernel_version=self.kernel_version,
+            )
+        )
+        if self.command is None:
+            return
+        self.command = [
             item.replace("$path", self.path.as_posix()) if "$path" in item else item
-            for item in command
+            for item in self.command
         ]
-
-    @property
-    def command_str(self):
-        return " ".join(self.command)
 
 
 class ToolCommand:
-    def __init__(self, tool: dict):
-        self.tool = ToolInfo(**tool)
+    def __init__(self, tool_info: ToolInfo):
+        self.tool = tool_info
 
-    def check_tool_path(self) -> bool:
-        if not self.tool.need_check:
-            return True
-        if not self.tool.path.exists():
-            return False
-        return True
-
-    def run(self):
-        if not self.check_tool_path():
+    def get_version(self) -> Optional[str]:
+        if self.tool.command is None:
             return None
-        work_dir = self.tool.path.parent if self.tool.need_check else None
-        command = Command(self.tool.command, cwd=work_dir)
-        result = command.run()
+        if not self.tool.path.exists():
+            return None
+        work_dir = self.tool.path.parent
+        command = Command(self.tool.command, working_dir=work_dir)
+        result = command.run(original=True)
+
         if result.returncode != 0:
             logger.error(
-                f"[ERROR] Command execution failed: {self.tool.command_str}\nOutput: {result.stderr}"
+                f"Command execution failed: {command.command_str}\nOutput: {result.stderr}"
             )
             return None
-        return self.tool.parse(result.stdout)
+        # 有些二进制程序为了兼容终端显示，或者把日志和信息分开，会把版本信息、提示信息等写到 stderr。
+        if self.tool.parse is None:
+            return None
+        return self.tool.parse(result.stdout or result.stderr)
+
+    def is_process_running(self) -> bool:
+        if self.tool.processes_command is None:
+            return False
+        command = Command([self.tool.processes_command])
+        result = command.run()
+        if result.returncode == 0:
+            return True
+        return False
 
 
-class ToolsVersion:
-    def __init__(self):
-        self.tools = TOOLS
+class ToolsHandler:
+    def __init__(self, package_tools_path: Optional[Path] = None):
+        # 目标端的工具集
+        self.tools = self._init_tools()
+        # 安装包中的工具集
+        self.package_tools = self._init_tools(package_tools_path)
 
-    def get_tools_version(self):
+    def _init_tools(self, package_tools_path: Optional[Path] = None) -> List[ToolInfo]:
+        tools_path = (
+            Path(TOOLS_PATH) if package_tools_path is None else package_tools_path
+        )
+        result = []
+        for tool in TOOLS:
+            result.append(ToolInfo(tools_path=tools_path.as_posix(), **tool))  # type: ignore[misc]
+        return result
+
+    def _get_tools_version(self, tools: List[ToolInfo]) -> Dict[str, str]:
         result = dict()
+        for tool in tools:
+            tool_command = ToolCommand(tool)
+            version = tool_command.get_version()
+            result[tool.name] = version or ""
+        return result
+
+    def check_process(self) -> bool:
+        table_data = []
+        flag = False
         for tool in self.tools:
             tool_command = ToolCommand(tool)
-            version = tool_command.run()
-            result[tool["name"]] = version
-        return result
+            if tool_command.is_process_running():
+                flag = flag or True
+                table_data.append([tool.name, "running"])
+        if flag:
+            table = tabulate(
+                table_data, headers=["service", "status"], tablefmt="pretty"
+            )
+            logger.warning(
+                f"Some services are running, please stop them first.\n{table}"
+            )
+        return flag
+
+    def get_tools_version(self) -> dict:
+        """
+        获取目标端工具版本信息
+        """
+        return self._get_tools_version(self.tools)

@@ -18,7 +18,7 @@ PACKAGE_DIR = PROJECT_DIR.joinpath("package")
 DISK_SPACE_THRESHOLD = 5 * 1024 * 1024 * 1024
 GB_SIZE = 1024 * 1024 * 1024
 
-TOOL_PATH = os.getenv("TOOL_PATH", "/opt/aio/airflow/tools")
+TOOLS_PATH = os.getenv("TOOLS_PATH", "/opt/aio/airflow/tools")
 KERNEL_VERSION = os.uname().release
 
 
