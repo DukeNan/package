@@ -286,6 +286,32 @@ TOOLS: List[Dict[str, Any]] = [
             }
         ],
     },
+    {
+        "name": "xtrabackup2.4",
+        "path": "{tools_path}/mysql/xtrabackup/2.4-linux-{arch}/xtrabackup",
+        "command": ["$path", "--version"],
+        "processes_command": None,
+        "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/mysql/xtrabackup/2.4-linux-{arch}",
+                "path_type": "dir",
+            }
+        ],
+    },
+    {
+        "name": "xtrabackup8.0",
+        "path": "{tools_path}/mysql/xtrabackup/8.0-linux-{arch}/xtrabackup",
+        "command": ["$path", "--version"],
+        "processes_command": None,
+        "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/mysql/xtrabackup/8.0-linux-{arch}",
+                "path_type": "dir",
+            }
+        ],
+    },
 ]
 
 
