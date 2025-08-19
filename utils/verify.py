@@ -170,7 +170,8 @@ class PackageBuilder:
 
     def encrypt_verify_file(self) -> Path:
         """
-        加密 verify.info 文件，并生成verify文件
+        1. 生成 verify.info 文件
+        2. 加密 verify.info 文件，并生成verify文件
         """
         checksum = self.package_checksum or self._get_checksum()
         verify_info_file_path = PROJECT_DIR.joinpath(

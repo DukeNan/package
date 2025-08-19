@@ -4,7 +4,7 @@ import platform
 import shutil
 from pathlib import Path
 
-from constants import DISK_SPACE_THRESHOLD, GB_SIZE, PACKAGE_DIR, PackageFilenameEnum
+from constants import DISK_SPACE_THRESHOLD, GB_SIZE, PROJECT_DIR, PackageFilenameEnum
 from utils.log_base import logger
 
 
@@ -29,13 +29,14 @@ class HostEnvironmentDetection:
         """
         从version.json文件中获取package_name，从package_name中获取arch
         """
-        version_file = PACKAGE_DIR.joinpath(PackageFilenameEnum.VERSION)
+        version_file = PROJECT_DIR.joinpath(PackageFilenameEnum.VERSION.value)
         data = json.loads(version_file.read_text(encoding="utf-8"))
         package_name = data.get("package_name")
         if not package_name:
             logger.error(f"package_name not found in {version_file}")
             return False
         if self.arch in package_name:
+            logger.info(f"arch supported, arch: {self.arch}, package_name: {package_name}")
             return True
         else:
             logger.error(
@@ -56,6 +57,7 @@ class HostEnvironmentDetection:
         free_space = f"{usage.free/GB_SIZE:.2f}G"
         need_space = f"{DISK_SPACE_THRESHOLD/GB_SIZE:.2f}G"
         if usage.free - DISK_SPACE_THRESHOLD > 0:
+            logger.info(f"disk space enough, free: {free_space}, need at least {need_space}")
             return True
         else:
             logger.error(
