@@ -36,7 +36,9 @@ class HostEnvironmentDetection:
             logger.error(f"package_name not found in {version_file}")
             return False
         if self.arch in package_name:
-            logger.info(f"arch supported, arch: {self.arch}, package_name: {package_name}")
+            logger.info(
+                f"arch supported, arch: {self.arch}, package_name: {package_name}"
+            )
             return True
         else:
             logger.error(
@@ -57,7 +59,9 @@ class HostEnvironmentDetection:
         free_space = f"{usage.free/GB_SIZE:.2f}G"
         need_space = f"{DISK_SPACE_THRESHOLD/GB_SIZE:.2f}G"
         if usage.free - DISK_SPACE_THRESHOLD > 0:
-            logger.info(f"disk space enough, free: {free_space}, need at least {need_space}")
+            logger.info(
+                f"disk space enough, free: {free_space}, need at least {need_space}"
+            )
             return True
         else:
             logger.error(
@@ -66,7 +70,9 @@ class HostEnvironmentDetection:
             return False
 
     def check(self) -> bool:
-        logger.info(f"checking host environment...")
+        logger.info(
+            f"To initialize the installation or upgrade, the following conditions must be met:"
+        )
         is_arch_supported = self._check_arch()
         if not is_arch_supported:
             return False

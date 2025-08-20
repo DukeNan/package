@@ -1,6 +1,7 @@
 import platform
 import re
 import shutil
+import sys
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -64,6 +65,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/aio-oss/{arch}/aio-oss",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep 'aio-oss' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -77,6 +79,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/bwlimit/{arch}/bwlimit_tools",
         "command": None,
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": None,
         "replace_dirs": [
             {
@@ -90,6 +93,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/rpc/{arch}/aio-speed",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: out.strip(),
         "replace_dirs": None,
     },
@@ -98,6 +102,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/rpc/{arch}/aio-speedd",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep 'aio-speedd' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: out.strip(),
         "replace_dirs": [
             {
@@ -111,6 +116,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/dm_ftp/{arch}/dm-ftp",
         "command": ["$path", "-v"],
         "processes_command": "ps -ef | grep 'dm-ftp' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"version:.*?(\d{8})", out),
         "replace_dirs": [
             {
@@ -124,6 +130,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/fs-tools/{arch}/fsclient/fs-cli",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: out.strip(),
         "replace_dirs": None,
     },
@@ -132,6 +139,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/fs-tools/{arch}/fsdeamon/fsdeamon",
         "command": ["$path", "-V"],
         "processes_command": "ps -ef | grep './fsdeamon' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -145,6 +153,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/fs-tools/{arch}/kernel/{kernel_version}/fsbackup.ko",
         "command": ["modinfo", "--field=version", "$path"],
         "processes_command": "lsmod | grep fsbackup",
+        "kill_processes_command": "lsmod | grep fsbackup | awk '{print $1}' | xargs rmmod",
         "parse": lambda out: out.strip(),
         "replace_dirs": None,
     },
@@ -153,6 +162,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/gmssl/{arch}/gmssl",
         "command": ["$path", "version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"GmSSL\s*(\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -166,6 +176,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/obk_ftp/{arch}/FileTransferAgent",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep './FileTransferAgent' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"version:\s*(\d{8})", out),
         "replace_dirs": [
             {
@@ -179,6 +190,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/zfsdeamon/zfsdeamon",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep './zfsdeamon' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -192,6 +204,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/afs/afs-cli",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"version\s*(\d+\.\d+\.\d+)", out),
         "replace_dirs": None,
     },
@@ -200,6 +213,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/afs/afsd",
         "command": ["$path", "--version", "x"],
         "processes_command": "ps -ef | grep 'afsd' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -213,6 +227,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/mc",
         "command": ["$path", f"--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"version:\s*(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -226,6 +241,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/s3fs",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep 's3fs' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r".*?V(\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -239,6 +255,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/s3-tool/s3-tool",
         "command": ["$path", "--version"],
         "processes_command": "ps -ef | grep 's3-tool' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
         "parse": lambda out: parse_version(r"(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -252,6 +269,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/sys/{arch}/lsof",
         "command": ["$path", "-v"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r".*?revision:\s*(\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -265,6 +283,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/s3-tools/{arch}/zfs/zfs",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"-(\d+\.\d+\.\d+\-\d+)", out),
         "replace_dirs": [
             {
@@ -278,6 +297,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/sys/{arch}/xbsa",
         "command": None,
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": None,
         "replace_dirs": [
             {
@@ -291,6 +311,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/mysql/xtrabackup/2.4-linux-{arch}/xtrabackup",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -304,6 +325,7 @@ TOOLS: List[Dict[str, Any]] = [
         "path": "{tools_path}/mysql/xtrabackup/8.0-linux-{arch}/xtrabackup",
         "command": ["$path", "--version"],
         "processes_command": None,
+        "kill_processes_command": None,
         "parse": lambda out: parse_version(r"version\s*?(\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
@@ -321,6 +343,7 @@ class ToolInfo:
     path: Path
     command: Optional[List[str]]
     processes_command: Optional[str]
+    kill_processes_command: Optional[str]
     parse: Optional[Callable[[str], str]]
     replace_dirs: Optional[List[dict]]
     tools_path: str
@@ -341,6 +364,10 @@ class ToolInfo:
             item.replace("$path", self.path.as_posix()) if "$path" in item else item
             for item in self.command
         ]
+        if self.kill_processes_command:
+            self.kill_processes_command = self.kill_processes_command.replace(
+                "$processes_command", self.processes_command
+            )
 
     @property
     def get_replace_dirs(self) -> List[dict]:
@@ -371,11 +398,8 @@ class ToolCommand:
         work_dir = self.tool.path.parent
         command = Command(self.tool.command, working_dir=work_dir)
         result = command.run(original=True)
-
         if result.returncode != 0:
-            logger.error(
-                f"Command execution failed: {command.command_str}\nOutput: {result.stderr}"
-            )
+            logger.error(f"Command execution failed: {command.command_str}")
             return None
         # 有些二进制程序为了兼容终端显示，或者把日志和信息分开，会把版本信息、提示信息等写到 stderr。
         if self.tool.parse is None:
@@ -394,10 +418,13 @@ class ToolCommand:
 
 class KernelBuilder:
     def __init__(self, kernel_code_path: Path):
+        # 内核代码路径
         self.kernel_code_path = kernel_code_path
         self.kernel_path = Path(TOOLS_PATH).joinpath(
             "fs-tools", ARCH, "kernel", KERNEL_VERSION, FS_BACKUP_KERNEL_NAME
         )
+        # 安装包中的内核文件路径
+        self.package_kernel_path = PROJECT_DIR.joinpath("package", "fsbackup.ko")
 
     @contextmanager
     def temporary_build_directory(self):
@@ -413,29 +440,53 @@ class KernelBuilder:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     def build_kernel(self) -> bool:
+        """
+        编译内核
+        1. 将内核代码复制到临时目录中
+        2. 编译内核
+        3. 如果编译失败，则返回 False
+        """
+        error_msg = (
+            "build fsbackup kernel failed.\n"
+            "please install the following dependencies: gcc, make, kernel-devel, kernel-headers, kernel\n"
+            "you can use the rpm -qa command to query the installation status of the dependencies."
+        )
         try:
             with self.temporary_build_directory() as temp_path:
                 # 将内核代码复制到临时目录中
                 for item in self.kernel_code_path.iterdir():
                     if item.is_dir():
-                        shutil.copytree(item, temp_path / item.name)
+                        shutil.copytree(item, temp_path.joinpath(item.name))
                     else:
                         shutil.copy2(item, temp_path)
                 # 编译内核
                 command = Command(["make"], working_dir=temp_path)
                 result = command.run()
                 if result.returncode != 0:
-                    logger.error(f"build kernel failed: \n{result.stderr}")
+                    logger.error(error_msg)
                     return False
-                kernel_file_path = temp_path.joinpath(FS_BACKUP_KERNEL_NAME)
-                if kernel_file_path.exists():
-                    # 确保目标目录存在
-                    self.kernel_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy(kernel_file_path, self.kernel_path)
+                logger.info("build fsbackup kernel success.")
+                shutil.copy(
+                    temp_path.joinpath(FS_BACKUP_KERNEL_NAME), self.package_kernel_path
+                )
             return True
-        except Exception as e:
-            logger.error(f"build kernel failed: {e}")
+        except Exception:
+            logger.error(error_msg)
             return False
+
+    def replace_fsbackup_kernel(self) -> bool:
+        """
+        替换目标端内核
+        """
+        self.kernel_path.parent.mkdir(parents=True, exist_ok=True)
+        command = Command(
+            ["cp", self.package_kernel_path.as_posix(), self.kernel_path.as_posix()]
+        )
+        result = command.run(original=True)
+        if result.returncode != 0:
+            logger.error("replace fsbackup kernel failed")
+            return False
+        return True
 
     def check_kernel_is_installed(self) -> bool:
         """
@@ -458,11 +509,13 @@ class KernelBuilder:
             return False
         return True
 
-    def get_kernel_version(self) -> str:
+    def get_kernel_version(self, kernel_path: Path = None) -> str:
         """
         获取内核版本
         """
-        command = Command(["modinfo", "--field=version", self.kernel_path.as_posix()])
+        # 内核文件路径, 默认是目标端内核文件路径
+        kernel_path = kernel_path or self.kernel_path
+        command = Command(["modinfo", "--field=version", kernel_path.as_posix()])
         result = command.run(original=True)
         if result.returncode != 0:
             logger.error(f"get kernel version failed: \n{result.stderr}")
@@ -470,21 +523,75 @@ class KernelBuilder:
         out = result.stdout or result.stderr or ""
         return out.strip()
 
-    def run(self) -> bool:
+    def remove_fsbackup_kernel(self) -> bool:
         """
-        运行内核编译流程
+        删除目标端内核
+        """
+        command = Command(["rmmod", "fsbackup"])
+        result = command.run(original=True)
+        if result.returncode != 0:
+            logger.error(f"remove fsbackup kernel failed.")
+            return False
+        return True
+
+    def _func_verify(self, func: Callable, result: bool) -> None:
+        """
+        执行函数，并返回结果, 如果结果与预期不一致，就退出程序
+        """
+        if func() != result:
+            sys.exit(1)
+
+    def install_fsbackup_kernel(self) -> bool:
+        """
+        运行内核编译流程, 首次安装内核时使用
+        1. 检查内核是否安装
+        2. 如果安装，则删除内核
+        3. 编译内核
+        4. 替换目标端内核
+        5. 安装内核
+        6. 获取内核版本
         """
         if self.check_kernel_is_installed():
-            logger.warning(
-                f"fsbackup kernel is installed, version: {self.get_kernel_version()}, please remove it first."
-            )
-            return False
-        if not self.build_kernel():
-            return False
-        if not self.install_kernel():
-            return False
+            logger.info("fsbackup kernel is installed, remove it.")
+            self.remove_fsbackup_kernel()
+            logger.info("remove fsbackup kernel success.")
+        self._func_verify(self.build_kernel, True)
+        self._func_verify(self.replace_fsbackup_kernel, True)
+        self._func_verify(self.install_kernel, True)
         kernel_version = self.get_kernel_version()
         logger.info(f"fsbackup kernel is installed, version: {kernel_version}")
+        return True
+
+    def update_fsbackup_kernel(self) -> bool:
+        """
+        更新内核
+        """
+        # 检查内核是否安装，不安装，则跳过更新
+        if not self.kernel_path.exists():
+            logger.info("fsbackup kernel is not installed, skip update")
+            return False
+        # 编译内核
+        self._func_verify(self.build_kernel, True)
+        # 比较版本，如果目标端内核版本大于等于安装包内核版本，则跳过更新
+        target_kernel_version = self.get_kernel_version()
+        package_kernel_version = self.get_kernel_version(self.package_kernel_path)
+        if parseVersion(target_kernel_version) >= parseVersion(package_kernel_version):
+            logger.info(
+                f"target fsbackup kernel version is {target_kernel_version}, greater than or equal to package fsbackup kernel version, skip update"
+            )
+            return False
+        # 检查内核是否安装，不安装，则删除内核
+        if self.check_kernel_is_installed():
+            logger.info("fsbackup kernel is installed, remove it.")
+            self.remove_fsbackup_kernel()
+            logger.info("remove fsbackup kernel success.")
+        # 替换目标端内核
+        self._func_verify(self.replace_fsbackup_kernel, True)
+        # 安装内核
+        self._func_verify(self.install_kernel, True)
+        # 获取内核版本
+        kernel_version = self.get_kernel_version()
+        logger.info(f"fsbackup kernel is updated, version: {kernel_version}")
         return True
 
 
@@ -495,6 +602,10 @@ class ToolsHandler:
         # 安装包中的工具集
         self.package_tools, self.package_tools_map = self._init_tools(
             package_tools_path
+        )
+        # 内核编译器
+        self.kernel_build = KernelBuilder(
+            PROJECT_DIR.joinpath("package", "fsbackup_kernel_4.x")
         )
 
     def _init_tools(
@@ -511,9 +622,27 @@ class ToolsHandler:
             tools_map[tool_info.name] = tool_info
         return result, tools_map
 
-    def _get_tools_version(self, tools: List[ToolInfo]) -> Dict[str, str]:
+    def _get_tools_version(
+        self,
+        tools: List[ToolInfo],
+        include_tools: List[str] = [],
+        exclude_tools: List[str] = [],
+    ) -> Dict[str, str]:
+        """
+        获取工具版本信息
+        Args:
+            tools: 工具列表
+            include_tools: 包含的工具列表
+            exclude_tools: 排除的工具列表
+        Returns:
+            dict: 工具版本信息
+        """
         result = dict()
         for tool in tools:
+            if tool.name in exclude_tools:
+                continue
+            if include_tools and tool.name not in include_tools:
+                continue
             tool_command = ToolCommand(tool)
             version = tool_command.get_version()
             result[tool.name] = version or ""
@@ -522,6 +651,14 @@ class ToolsHandler:
     def check_process(
         self, exclude_tools: List[str] = [], ignore_warning: bool = False
     ) -> bool:
+        """
+        检查工具进程是否运行
+        Args:
+            exclude_tools: 排除的工具列表
+            ignore_warning: 是否忽略警告
+        Returns:
+            bool: 是否运行, 如果运行，则返回 True，否则返回 False
+        """
         table_data = []
         flag = False
         for tool in self.tools:
@@ -550,11 +687,27 @@ class ToolsHandler:
                 logger.info(f"Current service status:\n{table}")
         return flag
 
-    def get_tools_version(self) -> dict:
+    def kill_background_processes(self, exclude_tools: List[str] = []):
+        """
+        杀死后台进程
+        跳过内核模块
+        """
+        for tool in self.tools:
+            # 跳过内核模块
+            if tool.name in exclude_tools or tool.kill_processes_command is None:
+                continue
+            command = Command([tool.kill_processes_command])
+            result = command.run()
+            if result.returncode == 0:
+                logger.info(f"kill {tool.name} background process success")
+
+    def get_tools_version(
+        self, include_tools: List[str] = [], exclude_tools: List[str] = []
+    ) -> Dict[str, str]:
         """
         获取目标端工具版本信息
         """
-        return self._get_tools_version(self.tools)
+        return self._get_tools_version(self.tools, include_tools, exclude_tools)
 
     def print_tools_version(self) -> None:
         """
@@ -611,6 +764,20 @@ class ToolsHandler:
         dst.symlink_to(src)
         logger.info(f"create soft link: {dst} -> {src}")
 
+    def _start_aio_speedd(self) -> None:
+        """
+        启动 aio-speedd
+        """
+        tool_info = self.tools_map["aio-speedd"]
+        tool_command = ToolCommand(tool_info)
+        if tool_command.is_process_running():
+            logger.info("aio-speedd is already running")
+            return
+        command = [tool_info.path.parent.joinpath("aio-speed.sh").as_posix(), "start"]
+        running_result = Command(command).run(original=True)
+        if running_result.returncode == 0:
+            logger.info("aio-speedd is started")
+
     def _set_aio_speedd(self) -> None:
         """
 
@@ -629,35 +796,23 @@ class ToolsHandler:
         self._create_soft_link(
             rpc_dirpath.joinpath("aio-speed.sh"), rpc_dirpath.joinpath("rpc.sh")
         )
-        # 启动服务
-        start_service_input = input(
-            "aio-speed服务已重新安装，请问是否需要立刻启动该服务？请输入y/n:"
-        )
-        start_service_input = start_service_input.strip() or "y"
-        if "y" not in start_service_input.lower():
-            start_result = Command(
-                [f"cd {rpc_dirpath.as_posix()} && ./aio-speed.sh start"]
-            ).run()
-            if start_result.returncode != 0:
-                logger.error(f"start aio-speed failed: \n{start_result.stderr}")
-            logger.info("aio-speed is started")
-
+        # 检查开机启动
         check_startup_result = Command(
             ["cat /etc/rc.d/rc.local |egrep 'rpc.sh|aio-speed.sh' |grep -v '#'"]
         ).run()
         if check_startup_result.returncode == 0:
             return
         _input = input(
-            "检测到您尚未配置aio-speed程序开机启动，是否需要配置开机启动呢？\n默认是当前安装用户执行开机启动。请输入y/n:"
+            "aio-speed service is installed, but not configured to start automatically, please input y/n to configure it: "
         )
         _input = _input.strip() or "y"
         if "y" not in _input.lower():
             return
-        command = """echo "/usr/bin/su - root -c 'cd /opt/aio/airflow/tools/rpc/x86_64/ && ./aio-speed.sh start'" >> /etc/rc.d/rc.local"""
-        set_startup_result = Command([command]).run()
-        if set_startup_result.returncode != 0:
-            logger.error(f"set aio-speed startup failed: \n{set_startup_result.stderr}")
-        logger.info("aio-speed startup is set")
+        # 设置开机启动
+        with open("/etc/rc.d/rc.local", "a") as f:
+            aio_speed_sh_path = rpc_dirpath.joinpath("aio-speed.sh").as_posix()
+            f.write(f"su - root -c '{aio_speed_sh_path} start'")
+            logger.info("aio-speed startup is set")
 
     def _copy_anything(self, src: Path, dst: Path) -> None:
         """
@@ -685,21 +840,6 @@ class ToolsHandler:
                 shutil.rmtree(dst, ignore_errors=True)
             shutil.copytree(src, dst)
 
-    def _build_kernel(self) -> bool:
-        """
-        编译内核
-        内核文件在 package/kernel_build 目录下
-        """
-        kernel_build = KernelBuilder(PROJECT_DIR.joinpath("package", "kernel_build"))
-        build_kernel_input = input(
-            "非编译安装需确保操作系统内核版本在支持列表，详见安装手册，否则必须编译安装。请问是否需要编译安装Fsbackup？请输入y/n: "
-        )
-        build_kernel_input = build_kernel_input.strip() or "y"
-        if "y" not in build_kernel_input.lower():
-            return False
-        kernel_build.run()
-        return True
-
     def install_tools(self) -> bool:
         """
         首次安装工具
@@ -713,7 +853,23 @@ class ToolsHandler:
                 self._copy_anything(Path(package_dir), Path(target_dir))
         self._set_aio_speedd()
         # 编译内核
-        self._build_kernel()
+        self.install_kernel()
+        return True
+
+    def install_kernel(self) -> bool:
+        """
+        首次安装内核
+        Args:
+            is_first_install: 是否首次安装
+        Returns:
+            bool: 是否成功
+        """
+        build_kernel_input = input("please input y/n to build fsbackup kernel: ")
+        build_kernel_input = build_kernel_input.strip() or "y"
+        if "y" not in build_kernel_input.lower():
+            return False
+        self.kernel_build.install_fsbackup_kernel()
+        self._start_aio_speedd()
         return True
 
     def update_tools(self) -> bool:
@@ -736,5 +892,6 @@ class ToolsHandler:
         if need_update_tools.get("aio-speedd", {}).get("is_need_update", False):
             self._set_aio_speedd()
 
-        self._build_kernel()
+        self.kernel_build.update_fsbackup_kernel()
+        self._start_aio_speedd()
         return True

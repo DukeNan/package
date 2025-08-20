@@ -1,16 +1,21 @@
+import argparse
 import json
 import sys
 import tarfile
+from typing import Callable
 
 from constants import PROJECT_DIR, PackageFilenameEnum, PackageTypeEnum
 from utils.aio_tools import ToolsHandler
+from utils.check import HostEnvironmentDetection
 from utils.log_base import logger
 from utils.verify import PackageBuilder
 
 
 class Installer:
-    def __init__(self):
-        self.package_tar_gz = PROJECT_DIR.joinpath("package.tar.gz")
+    def __init__(self, force: bool = False):
+        self.force = force
+        self.host_environment_detection = HostEnvironmentDetection()
+        self.package_tar_gz = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         self.package_dir = PROJECT_DIR.joinpath("package")
         self.config = self._parse_config()
         self.python_path = sys.executable
@@ -53,20 +58,42 @@ class Installer:
     def _check_process(self) -> bool:
         return self.tools_handler.check_process(exclude_tools=["kernel"])
 
+    def _func_verify(self, func: Callable, result: bool) -> None:
+        """
+        执行函数，并返回结果, 如果结果与预期不一致，就退出程序
+        """
+        if func() != result:
+            sys.exit(1)
+
     def run(self) -> None:
-        check_funs = [
-            (self._check_process, True),
-            (self._verify_package, False),
-            (self._extract_tar_gz, False),
-        ]
-        for item in check_funs:
-            if item[0]() == item[1]:
-                return
+        if not self.host_environment_detection.check():
+            return
+        if self.force:
+            self.tools_handler.kill_background_processes(exclude_tools=["kernel"])
+        else:
+            self._func_verify(self._check_process, False)
+        self._func_verify(self._verify_package, True)
+        self._func_verify(self._extract_tar_gz, True)
         self.install_or_update_tools()
         self.tools_handler.print_tools_version()
         self.tools_handler.check_process(ignore_warning=True)
 
 
-if __name__ == "__main__":
-    installer = Installer()
+def main():
+    parser = argparse.ArgumentParser(description="tools installer or updater")
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",  # 不需要值，只要写了就表示 True
+        help="force install or update",
+    )
+    args = parser.parse_args()
+    if args.force:
+        installer = Installer(force=True)
+    else:
+        installer = Installer()
     installer.run()
+
+
+if __name__ == "__main__":
+    main()

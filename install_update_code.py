@@ -1,11 +1,13 @@
-from pathlib import Path
 import tarfile
+from pathlib import Path
 from typing import List
+
 from constants import PROJECT_DIR, PackageFilenameEnum
 from utils.check import HostEnvironmentDetection
 from utils.command import Command
-from utils.verify import PackageBuilder
 from utils.log_base import logger
+from utils.verify import PackageBuilder
+
 
 class Installer:
     def __init__(self):
@@ -47,19 +49,26 @@ class Installer:
         if not pip_path.exists():
             logger.info(f"pip3 not found, skip install cdm")
             return
-        whl_files = self._get_whl_files([
-            "aio-*.whl",
-            "aio_public_module-*.whl",
-            ])
+        whl_files = self._get_whl_files(
+            [
+                "aio-*.whl",
+                "aio_public_module-*.whl",
+            ]
+        )
         for whl_file in whl_files:
-            install_result = Command([
-                pip_path.as_posix(),
-                "install",
-                "--no-index",
-                f"--find-links={self.package_dir.as_posix()}",
-                whl_file.as_posix()]).run(original=True)
+            install_result = Command(
+                [
+                    pip_path.as_posix(),
+                    "install",
+                    "--no-index",
+                    f"--find-links={self.package_dir.as_posix()}",
+                    whl_file.as_posix(),
+                ]
+            ).run(original=True)
             if install_result.returncode != 0:
-                logger.error(f"Failed to install {whl_file.as_posix()}: {install_result.stderr}")
+                logger.error(
+                    f"Failed to install {whl_file.as_posix()}: {install_result.stderr}"
+                )
             else:
                 logger.info(f"Installed {whl_file.as_posix()}")
 
@@ -68,21 +77,23 @@ class Installer:
         if not pip_path.exists():
             logger.info(f"pip3 not found, skip install airflow")
             return
-        whl_files = self._get_whl_files([
-            "aio-*.whl",
-            "aio_public_module-*.whl",
-            "aio_tasks-*.whl",
-            "tasks-*.whl"
-            ])
+        whl_files = self._get_whl_files(
+            ["aio-*.whl", "aio_public_module-*.whl", "aio_tasks-*.whl", "tasks-*.whl"]
+        )
         for whl_file in whl_files:
-            install_result = Command([
-                pip_path.as_posix(),
-                "install",
-                "--no-index",
-                f"--find-links={self.package_dir.as_posix()}",
-                whl_file.as_posix()]).run(original=True)
+            install_result = Command(
+                [
+                    pip_path.as_posix(),
+                    "install",
+                    "--no-index",
+                    f"--find-links={self.package_dir.as_posix()}",
+                    whl_file.as_posix(),
+                ]
+            ).run(original=True)
             if install_result.returncode != 0:
-                logger.error(f"Failed to install {whl_file.as_posix()}: {install_result.stderr}")
+                logger.error(
+                    f"Failed to install {whl_file.as_posix()}: {install_result.stderr}"
+                )
             else:
                 logger.info(f"Installed {whl_file.as_posix()}")
 
