@@ -54,10 +54,17 @@ class Installer:
         files = list(self.package_dir.glob("aio-airflow-*.rpm"))
         assert len(files) > 0, "No rpm files found"
         rpm_file = files[0]
-        command = Command(["rpm", "-ivh", rpm_file])
-        result = command.run(original=True)
+        command = Command(["rpm", "-ivh", rpm_file.as_posix()])
+        result = command.run(original=True, display=True)
         if result.returncode != 0:
             logger.error(f"Failed to install rpm: {result.stderr}")
+
+    def _start_aio_speedd(self) -> None:
+        command = Command(["systemctl", "restart", "aio.speed.service"])
+        result = command.run(original=True)
+        if result.returncode != 0:
+            logger.error(f"Failed to start aio-speedd: {result.stderr}")
+        logger.info("aio-speedd is started")
 
     def run(self) -> None:
         if not self.host_environment_detection.check():
@@ -69,6 +76,7 @@ class Installer:
         if not self._extract_tar_gz():
             return
         self._install_rpm()
+        self._start_aio_speedd()
 
 
 if __name__ == "__main__":

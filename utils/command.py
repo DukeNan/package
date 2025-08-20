@@ -17,9 +17,11 @@ class Command:
         self.working_dir = working_dir
         self.timeout = timeout
 
-    def run(self, original=False) -> subprocess.CompletedProcess:
+    def run(self, original=False, display=False) -> subprocess.CompletedProcess:
         env = os.environ.copy()
         env["LANG"] = "en_US.UTF-8"
+        stdout: Optional[int] = None if display else subprocess.PIPE
+        stderr: Optional[int] = None if display else subprocess.PIPE
 
         if original:
             # 直接调用系统调用（如 execvp），​​不启动额外的 shell 进程​​（如 /bin/bash），性能更高。
@@ -28,8 +30,8 @@ class Command:
             return subprocess.run(
                 self.command,
                 cwd=self.working_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=stdout,
+                stderr=stderr,
                 timeout=self.timeout,
                 universal_newlines=True,
                 env=env,
@@ -42,8 +44,8 @@ class Command:
                 shell=True,
                 executable="/bin/bash",
                 cwd=self.working_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=stdout,
+                stderr=stderr,
                 timeout=self.timeout,
                 universal_newlines=True,
                 env=env,

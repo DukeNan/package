@@ -47,7 +47,7 @@ class Installer:
     def _install_cdm(self) -> None:
         pip_path = Path("/opt/aio/cdm/bin/pip3")
         if not pip_path.exists():
-            logger.info(f"pip3 not found, skip install cdm")
+            logger.info("cdm is not installed, skip install cdm")
             return
         whl_files = self._get_whl_files(
             [
@@ -75,7 +75,7 @@ class Installer:
     def _install_airflow(self) -> None:
         pip_path = Path("/opt/aio/airflow/bin/pip3")
         if not pip_path.exists():
-            logger.info(f"pip3 not found, skip install airflow")
+            logger.info(f"airflow is not installed, skip install airflow")
             return
         whl_files = self._get_whl_files(
             ["aio-*.whl", "aio_public_module-*.whl", "aio_tasks-*.whl", "tasks-*.whl"]

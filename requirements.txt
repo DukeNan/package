@@ -1,3 +1,4 @@
+cryptography==40.0.2
 dataclasses==0.8
 pyinstaller==4.10
 tabulate==0.8.10
