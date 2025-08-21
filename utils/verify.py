@@ -1,7 +1,10 @@
+import warnings
+
+warnings.filterwarnings("ignore", message="Python 3.6 is no longer supported")
+
 import hashlib
 import json
 import os
-import sys
 from pathlib import Path
 
 from cryptography.hazmat.backends import default_backend
