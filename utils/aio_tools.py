@@ -279,6 +279,34 @@ TOOLS: List[Dict[str, Any]] = [
         ],
     },
     {
+        "name": "rdbcomm",
+        "path": "{tools_path}/rdbcomm/{arch}/rdbcomm",
+        "command": ["$path", "-v"],
+        "processes_command": None,
+        "kill_processes_command": None,
+        "parse": lambda out: out.strip(),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/rdbcomm/{arch}/rdbcomm",
+                "path_type": "file",
+            }
+        ],
+    },
+    {
+        "name": "rdbcommd",
+        "path": "{tools_path}/rdbcomm/{arch}/rdbcommd",
+        "command": ["$path", "-v"],
+        "processes_command": "ps -ef | grep '/rdbcommd' | grep -v grep",
+        "kill_processes_command": "$processes_command | awk '{print $2}' | xargs kill -9",
+        "parse": lambda out: out.strip(),
+        "replace_dirs": [
+            {
+                "path": "{tools_path}/rdbcomm/{arch}/rdbcommd",
+                "path_type": "file",
+            }
+        ],
+    },
+    {
         "name": "zfs",
         "path": "{tools_path}/s3-tools/{arch}/zfs/zfs",
         "command": ["$path", "--version"],
@@ -802,17 +830,36 @@ class ToolsHandler:
         ).run()
         if check_startup_result.returncode == 0:
             return
-        _input = input(
-            "aio-speed service is installed, but not configured to start automatically, please input y/n to configure it: "
-        )
-        _input = _input.strip() or "y"
-        if "y" not in _input.lower():
-            return
         # 设置开机启动
         with open("/etc/rc.d/rc.local", "a") as f:
             aio_speed_sh_path = rpc_dirpath.joinpath("aio-speed.sh").as_posix()
             f.write(f"su - root -c '{aio_speed_sh_path} start'")
             logger.info("aio-speed startup is set")
+
+    def _set_rdbcommd(self) -> None:
+        """
+        设置 rdbcommd 开机启动
+        """
+        tool_info = self.tools_map["rdbcommd"]
+        tool_command = ToolCommand(tool_info)
+        if tool_command.is_process_running():
+            logger.info("rdbcommd is already running")
+        else:
+            command = [tool_info.path.as_posix(), "-d"]
+            running_result = Command(command).run(original=True)
+            if running_result.returncode == 0:
+                logger.info("rdbcommd is started")
+        # 检查开机启动
+        check_startup_result = Command(
+            ["cat /etc/rc.d/rc.local |egrep 'rdbcommd' |grep -v '#'"]
+        ).run()
+        if check_startup_result.returncode == 0:
+            return
+        # 设置开机启动
+        with open("/etc/rc.d/rc.local", "a") as f:
+            rdbcommd_path = tool_info.path.as_posix()
+            f.write(f"su - root -c '{rdbcommd_path} -d'")
+            logger.info("rdbcommd startup is set")
 
     def _copy_anything(self, src: Path, dst: Path) -> None:
         """
@@ -852,6 +899,7 @@ class ToolsHandler:
                 logger.info(f"install tool {tool_name}: {package_dir} -> {target_dir}")
                 self._copy_anything(Path(package_dir), Path(target_dir))
         self._set_aio_speedd()
+        self._set_rdbcommd()
         # 编译内核
         self.install_kernel()
         return True
