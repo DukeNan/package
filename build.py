@@ -1,8 +1,9 @@
+import os
 import shutil
 import tarfile
 from pathlib import Path
 
-from constants import PROJECT_DIR, PackageFilenameEnum
+from constants import PROJECT_DIR, PackageFilenameEnum, PackageTypeEnum
 from utils.command import Command
 from utils.verify import PackageBuilder
 
@@ -10,22 +11,44 @@ from utils.verify import PackageBuilder
 class BuildPackage:
     def __init__(self):
         self._builder = PackageBuilder()
-        self.install_script = "install_{}.py".format(
-            self._builder.config.get("package_type")
-        )
+        self.install_script = self._init_script_name()
+
+    def _init_script_name(self) -> str:
+        """
+        初始化脚本名称
+        """
+        package_type = self._builder.config.get("package_type")
+        if package_type == PackageTypeEnum.INSTALL_RDB_AGENT.value:
+            return "install_rdb_agent.py"
+        elif package_type == PackageTypeEnum.INSTALL_RDB_SERVER.value:
+            return "install_rdb_server.py"
+        elif package_type == PackageTypeEnum.INSTALL_RDB_WORKER.value:
+            return "install_rdb_worker.py"
+        elif package_type == PackageTypeEnum.INSTALL_UPDATE_CODE.value:
+            return "install_update_code.py"
+        elif package_type == PackageTypeEnum.INSTALL_UPDATE_AGENT.value:
+            return "install_rdb_agent.py"
+        else:
+            raise Exception(f"Invalid package type: {package_type}")
 
     def build_binary(self) -> Path:
         """
         编译成二进制文件
         使用 PyInstaller 编译成二进制文件
+        将
+            - install_rdb_agent.py
+            - install_rdb_server.py
+            - install_rdb_worker.py
+            - install_update_code.py
+            - install_update_agent.py
+        编译成二进制文件
         """
         install_script_name = self.install_script.split(".")[0]
         pyinstaller_path = shutil.which("pyinstaller")
         if not pyinstaller_path:
             raise Exception("pyinstaller not found")
         command = Command([pyinstaller_path, "--onefile", self.install_script])
-        print("command: ", " ".join(command.command))
-        result = command.run(original=True)
+        result = command.run(original=True, display=True)
         if result.returncode != 0:
             raise Exception(f"Failed to build binary: {result.stderr}")
         return Path(PROJECT_DIR).joinpath("dist/{}".format(install_script_name))
@@ -35,13 +58,14 @@ class BuildPackage:
         构建 tar.gz 包
         """
         # 构建包
+        base_dir = self._builder.package_name.replace(".tar.gz", "")
         with tarfile.open(self._builder.package_name, "w:gz") as tar:
             for file in self._builder.PACKAGE_FILES:
-                if file == PackageFilenameEnum.BUILD:
-                    tar.add(file, arcname=PackageFilenameEnum.PARSER.value)
-                else:
-                    tar.add(file)
-            tar.add(install_binary_path, arcname=PackageFilenameEnum.INSTALL.value)
+                tar.add(file, arcname=Path(base_dir).joinpath(Path(file).name))
+            tar.add(
+                install_binary_path,
+                arcname=Path(base_dir).joinpath(PackageFilenameEnum.INSTALL.value),
+            )
 
     def clean_dist(self):
         """

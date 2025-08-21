@@ -50,7 +50,7 @@ class Installer:
     def install_or_update_tools(self) -> None:
         if self.config["package_type"] == PackageTypeEnum.INSTALL_RDB_AGENT:
             self.tools_handler.install_tools()
-        elif self.config["package_type"] == PackageTypeEnum.UPDATE_AGENT:
+        elif self.config["package_type"] == PackageTypeEnum.INSTALL_UPDATE_AGENT:
             self.tools_handler.update_tools()
         else:
             logger.error(f"Invalid package type: {self.config['package_type']}")

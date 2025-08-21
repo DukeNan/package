@@ -24,6 +24,10 @@ class Installer:
             return False
         return True
 
+    def _start_service(self, service_name: str) -> None:
+        Command(["rdb", "stop", service_name]).run(original=True, display=True)
+        Command(["rdb", "start", service_name]).run(original=True, display=True)
+
     def _extract_tar_gz(self) -> bool:
         """
         解压package.tar.gz文件到package目录下
@@ -72,6 +76,14 @@ class Installer:
             else:
                 logger.info(f"Installed {whl_file.as_posix()}")
 
+        # 启动服务
+        self._start_service("apscheduler")
+        self._start_service("cdm")
+        self._start_service("default_worker")
+        self._start_service("scheduler")
+        self._start_service("task_log")
+        self._start_service("web")
+
     def _install_airflow(self) -> None:
         pip_path = Path("/opt/aio/airflow/bin/pip3")
         if not pip_path.exists():
@@ -96,6 +108,13 @@ class Installer:
                 )
             else:
                 logger.info(f"Installed {whl_file.as_posix()}")
+
+        # server和worker上同时存在airflow服务，Server上不启动worker上特有服务
+        if Path("/opt/aio/cdm/bin/pip3").exists():
+            return
+        # 启动服务
+        self._start_service("task_log")
+        self._start_service("worker")
 
     def _install_code(self) -> None:
         self._install_cdm()

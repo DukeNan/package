@@ -27,8 +27,8 @@ class PackageTypeEnum(str, Enum):
     INSTALL_RDB_SERVER = "install_rdb_server"
     INSTALL_RDB_WORKER = "install_rdb_worker"
     INSTALL_RDB_AGENT = "install_rdb_agent"
-    UPDATE_CODE = "update_code"
-    UPDATE_AGENT = "update_agent"
+    INSTALL_UPDATE_CODE = "install_update_code"
+    INSTALL_UPDATE_AGENT = "install_update_agent"
 
 
 class PackageFilenameEnum(str, Enum):

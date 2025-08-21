@@ -50,7 +50,11 @@ class Installer:
 
     def _install_rpm(self) -> None:
         files = list(self.package_dir.glob("aio-*.rpm"))
-        assert len(files) > 0, "No rpm files found"
+        if not files:
+            logger.info("No rpm files found")
+            return
+        if len(files) > 1:
+            logger.info(f"Multiple rpm files found: {files}")
         rpm_file = files[0]
         command = Command(["rpm", "-ivh", rpm_file.as_posix()])
         result = command.run(original=True, display=True)
