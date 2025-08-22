@@ -1,5 +1,6 @@
 import subprocess
 import tarfile
+from pathlib import Path
 
 from constants import PROJECT_DIR, PackageFilenameEnum
 from utils.check import HostEnvironmentDetection
@@ -13,6 +14,16 @@ class Installer:
         self.package_tar_gz = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         self.package_dir = PROJECT_DIR.joinpath("package")
         self.host_environment_detection = HostEnvironmentDetection()
+
+    def _check_host_type(self) -> bool:
+        """
+        检查主机类型,
+        如果是 aio_worker 主机, 则返回 True, 否则返回 False
+        """
+        if Path("/opt/aio/cdm").exists():
+            logger.error("This is not a aio_worker host.")
+            return False
+        return True
 
     def _verify_package(self) -> bool:
         try:
@@ -71,6 +82,8 @@ class Installer:
         logger.info("aio-speedd is started")
 
     def run(self) -> None:
+        if not self._check_host_type():
+            return
         if not self.host_environment_detection.check():
             return
         if self._check_rpm_installed():

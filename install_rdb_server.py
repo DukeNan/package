@@ -1,4 +1,5 @@
 import ipaddress
+import re
 import tarfile
 from pathlib import Path
 
@@ -14,6 +15,17 @@ class Installer:
         self.package_tar_gz = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         self.package_dir = PROJECT_DIR.joinpath("package")
         self.host_environment_detection = HostEnvironmentDetection()
+        self.is_first_install = False
+
+    def _check_host_type(self) -> bool:
+        """
+        检查主机类型,
+        如果是 aio_server 主机, 则返回 True, 否则返回 False
+        """
+        if Path("/opt/aio/cdm").exists():
+            return True
+        logger.error("This is not a aio_server host.")
+        return False
 
     def _verify_package(self) -> bool:
         try:
@@ -77,6 +89,28 @@ class Installer:
         except ipaddress.AddressValueError:
             return False
 
+    def _set_permissions(self, env_file_content: str) -> str:
+        """
+        设置权限, 设置三全分立
+        1. 首次安装才需要询问设置权限
+        2. 如果 AIO_ROLE_MODE 存在，则不设置
+        3. 如果 AIO_ROLE_MODE 不存在，则设置为 non-separate
+        """
+        # 默认设置为 non-separate
+        aio_role_mode = "non-separate"
+        if self.is_first_install:
+            input_str = input("是否开启三权分立(y/n), 默认不开启: ")
+            if "y" in input_str.lower():
+                aio_role_mode = "separate"
+        # 删除 AIO_ROLE_MODE 的行
+        env_file_content = re.sub(
+            r"^AIO_ROLE_MODE=.*\n?", "", env_file_content, flags=re.M
+        )
+        env_file_content = (
+            env_file_content.strip() + f"\nAIO_ROLE_MODE={aio_role_mode}\n"
+        )
+        return env_file_content
+
     def _replace_aio_env(self) -> None:
         """
         替换 aio.env 文件中的 127.0.0.1 为实际的 server ip
@@ -89,12 +123,19 @@ class Installer:
         # 读取 aio.env 文件内容
         content = aio_env_file.read_text(encoding="utf-8")
         if "127.0.0.1" not in content:
-            logger.info(f"{aio_env_file.as_posix()} is not modified")
+            new_content = self._set_permissions(content)
+            if new_content != content:
+                aio_env_file.write_text(new_content, encoding="utf-8")
+                logger.info(f"{aio_env_file.as_posix()} is modified")
+                return
             return
+
+        # 如果是第一次安装，则需要替换 aio.env 文件中的 127.0.0.1 为实际的 server ip
+        self.is_first_install = True
         # 替换 aio.env 文件内容
         while True:
             input_str = input(
-                f"Please input the server ipv4 address: (example: 192.168.1.100)"
+                f"Please input the server ipv4 address (example: 192.168.1.100): "
             )
             input_str = input_str.strip()
             if "127.0.0.1" in input_str:
@@ -105,6 +146,7 @@ class Installer:
                 continue
             content = content.replace("127.0.0.1", input_str)
             break
+        content = self._set_permissions(content)
         aio_env_file.write_text(content, encoding="utf-8")
         logger.info(f"{aio_env_file.as_posix()} is modified")
 
@@ -115,6 +157,8 @@ class Installer:
         Command(["systemctl", "start", "aio.service"]).run(original=True, display=True)
 
     def run(self) -> None:
+        if not self._check_host_type():
+            return
         if not self.host_environment_detection.check():
             return
         if self._check_rpm_installed():
