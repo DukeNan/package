@@ -526,16 +526,35 @@ class KernelBuilder:
             return True
         return False
 
-    def install_kernel(self) -> bool:
+    def install_kernel(self, fsbackup_done_output_dir: str) -> bool:
         """
-        安装内核
+        安装内核, 传入 fsbackup_done_output_dir 参数
         """
-        command = Command(["insmod", self.kernel_path.as_posix()])
+        command = Command(
+            [
+                "insmod",
+                self.kernel_path.as_posix(),
+                f"fsbackup_done_output_dir={fsbackup_done_output_dir}",
+            ]
+        )
         result = command.run(original=True)
         if result.returncode != 0:
             logger.error(f"install kernel failed: \n{result.stderr}")
             return False
         return True
+
+    def get_current_fsbackup_done_output_dir(self) -> str:
+        """
+        获取当前 fsbackup 完成后的输出目录
+        """
+        current_config_path = Path(
+            "/sys/module/fsbackup/parameters/fsbackup_done_output_dir"
+        )
+        if current_config_path.exists():
+            current_config_value = current_config_path.read_text().strip()
+            if current_config_value:
+                return current_config_value
+        return ""
 
     def get_kernel_version(self, kernel_path: Path = None) -> str:
         """
@@ -550,6 +569,103 @@ class KernelBuilder:
             return ""
         out = result.stdout or result.stderr or ""
         return out.strip()
+
+    def _is_dir_empty_pathlib(self, dir: Path) -> bool:
+        """
+        使用 pathlib 模块判断目录是否为空
+        return:
+            True: 目录为空
+            False: 目录不为空
+        """
+        p = Path(dir)
+        if not p.is_dir():
+            # 路径不存在或不是目录
+            return False
+        # next() 会尝试从迭代器中获取第一个元素。
+        # 如果迭代器为空，会抛出 StopIteration 异常。
+        try:
+            next(p.iterdir())
+            return False  # 有内容，不为空
+        except StopIteration:
+            return True  # 没有内容，为空
+
+    def ask_fsbackup_done_output_dir(self) -> str:
+        """
+        询问 fsbackup 完成后的输出目录
+        """
+        current_config_value = self.get_current_fsbackup_done_output_dir()
+        if current_config_value:
+            logger.info(
+                f"fsbackup done output dir is already configured: {current_config_value}"
+            )
+            if self._is_dir_empty_pathlib(Path(current_config_value)):
+                return current_config_value
+            else:
+                logger.warning(
+                    f"fsbackup done output dir {current_config_value} is not empty."
+                )
+                clean_dir_input = input(
+                    f"please input y/n to clean fsbackup done output dir {current_config_value} (default: n): "
+                )
+                if "y" in clean_dir_input.lower():
+                    shutil.rmtree(current_config_value)
+                    logger.info(
+                        f"clean fsbackup done output dir {current_config_value} success."
+                    )
+                    Path(current_config_value).mkdir(
+                        parents=True, exist_ok=True, mode=0o755
+                    )
+                    return current_config_value
+        # 如果当前配置为空，则询问配置
+        fsbackup_done_output_dir = Path("/var/fsbackup")
+        while True:
+            input_str = input(
+                "please input the fsbackup done output dir, suggest space in 200GB: (default: /var/fsbackup)"
+            ).strip()
+            if input_str:
+                fsbackup_done_output_dir = Path(input_str)
+            if not fsbackup_done_output_dir.is_absolute():
+                logger.error(
+                    f"fsbackup done output dir {fsbackup_done_output_dir} is not absolute."
+                )
+                continue
+            # 如果目录不存在，则创建目录
+            if not fsbackup_done_output_dir.exists():
+                logger.info(
+                    f"create fsbackup done output dir {fsbackup_done_output_dir}"
+                )
+                try:
+                    fsbackup_done_output_dir.mkdir(
+                        parents=True, exist_ok=True, mode=0o755
+                    )
+                except Exception:
+                    logger.error(
+                        f"create fsbackup done output dir {fsbackup_done_output_dir} failed."
+                    )
+                    continue
+            # 如果目录存在，则检查目录是否为空
+            else:
+                if not fsbackup_done_output_dir.is_dir():
+                    logger.warning(
+                        f"fsbackup done output dir {fsbackup_done_output_dir} is not a directory."
+                    )
+                    continue
+                if not self._is_dir_empty_pathlib(fsbackup_done_output_dir):
+                    logger.warning(
+                        f"fsbackup done output dir {fsbackup_done_output_dir} is not empty."
+                    )
+                    clean_dir_input = input(
+                        f"please input y/n to clean fsbackup done output dir {fsbackup_done_output_dir} (default: n): "
+                    )
+                    if "y" in clean_dir_input.lower():
+                        shutil.rmtree(fsbackup_done_output_dir)
+                        fsbackup_done_output_dir.mkdir(
+                            parents=True, exist_ok=True, mode=0o755
+                        )
+                fsbackup_done_output_dir.chmod(0o755)
+                break
+            break
+        return f"{fsbackup_done_output_dir.as_posix()}/"
 
     def remove_fsbackup_kernel(self) -> bool:
         """
@@ -572,20 +688,22 @@ class KernelBuilder:
     def install_fsbackup_kernel(self) -> bool:
         """
         运行内核编译流程, 首次安装内核时使用
-        1. 检查内核是否安装
-        2. 如果安装，则删除内核
-        3. 编译内核
-        4. 替换目标端内核
-        5. 安装内核
-        6. 获取内核版本
+        1. 询问 fsbackup 完成后的输出目录
+        2. 检查内核是否安装
+        3. 如果安装，则删除内核
+        4. 编译内核
+        5. 替换目标端内核
+        6. 安装内核
+        7. 获取内核版本
         """
+        fsbackup_done_output_dir = self.ask_fsbackup_done_output_dir()
         if self.check_kernel_is_installed():
             logger.info("fsbackup kernel is installed, remove it.")
             self.remove_fsbackup_kernel()
             logger.info("remove fsbackup kernel success.")
         self._func_verify(self.build_kernel, True)
         self._func_verify(self.replace_fsbackup_kernel, True)
-        self._func_verify(self.install_kernel, True)
+        self._func_verify(lambda: self.install_kernel(fsbackup_done_output_dir), True)
         kernel_version = self.get_kernel_version()
         logger.info(f"fsbackup kernel is installed, version: {kernel_version}")
         return True
@@ -608,6 +726,7 @@ class KernelBuilder:
                 f"target fsbackup kernel version is {target_kernel_version}, greater than or equal to package fsbackup kernel version, skip update"
             )
             return False
+        fsbackup_done_output_dir = self.ask_fsbackup_done_output_dir()
         # 检查内核是否安装，不安装，则删除内核
         if self.check_kernel_is_installed():
             logger.info("fsbackup kernel is installed, remove it.")
@@ -616,7 +735,7 @@ class KernelBuilder:
         # 替换目标端内核
         self._func_verify(self.replace_fsbackup_kernel, True)
         # 安装内核
-        self._func_verify(self.install_kernel, True)
+        self._func_verify(lambda: self.install_kernel(fsbackup_done_output_dir), True)
         # 获取内核版本
         kernel_version = self.get_kernel_version()
         logger.info(f"fsbackup kernel is updated, version: {kernel_version}")
