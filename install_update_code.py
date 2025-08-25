@@ -1,8 +1,11 @@
+import re
+import sys
 import tarfile
 from pathlib import Path
 from typing import List
 
 from constants import PROJECT_DIR, PackageFilenameEnum
+from utils.aio_tools import parse_version
 from utils.check import HostEnvironmentDetection
 from utils.command import Command
 from utils.log_base import logger
@@ -14,11 +17,42 @@ class Installer:
         self.package_tar_gz = PROJECT_DIR.joinpath(PackageFilenameEnum.PACKAGE.value)
         self.package_dir = PROJECT_DIR.joinpath("package")
         self.host_environment_detection = HostEnvironmentDetection()
+        self._package_builder = PackageBuilder()
+        self.current_version = self._get_current_version()
+
+    def _get_current_version(self) -> str:
+        """
+        获取当前大版本号, 例如 5.4.1.0 返回 5.4.1，从package_name中获取
+        """
+        package_name = self._package_builder.config.get("package_name")
+        if not package_name:
+            logger.error("package_name not found")
+            sys.exit(1)
+        version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", package_name)
+        if not version:
+            logger.error("Failed to get current version")
+            sys.exit(1)
+        return version
+
+    def _set_version(self) -> None:
+        """
+        设置版本号, 将当前的大版本号设置到aio.env文件中
+        """
+        version = self._get_current_version()
+        env_file = Path("/opt/aio/cfg/aio.env")
+        if not env_file.exists():
+            logger.error(f"aio.env file not found: {env_file.as_posix()}")
+            return
+        content = env_file.read_text(encoding="utf-8")
+        content = re.sub(r"^AIO_VERSION=.*\n?", "", content, flags=re.M)
+        new_content = content.strip() + f"\nAIO_VERSION={version}\n"
+        if new_content != content:
+            env_file.write_text(new_content, encoding="utf-8")
+            logger.info(f"Set AIO_VERSION to {version} in {env_file.as_posix()}")
 
     def _verify_package(self) -> bool:
         try:
-            package_builder = PackageBuilder()
-            package_builder.decrypt_verify_file()
+            self._package_builder.decrypt_verify_file()
         except Exception as e:
             logger.error(f"Failed to verify package: {e}")
             return False
@@ -48,6 +82,13 @@ class Installer:
             whl_files.update(self.package_dir.glob(pattern))
         return list(whl_files)
 
+    def _get_python_library_version(self, pip_path: Path, library_name: str) -> str:
+        result = Command([pip_path.as_posix(), "show", library_name]).run(original=True)
+        if result.returncode != 0:
+            logger.error(f"Failed to get {library_name} version: {result.stderr}")
+            return ""
+        return parse_version(r"Version:\s*(\d+\.\d+\.\d+\.\d+)", result.stdout)
+
     def _install_cdm(self) -> None:
         pip_path = Path("/opt/aio/cdm/bin/pip3")
         if not pip_path.exists():
@@ -60,6 +101,19 @@ class Installer:
             ]
         )
         for whl_file in whl_files:
+            library_name = whl_file.stem.split("-")[0]
+            library_version = self._get_python_library_version(pip_path, library_name)
+            if library_version == "":
+                logger.error(f"Failed to get {library_name} version")
+                library_version = "0.0.0"
+            logger.info(f"Library version: {library_name} {library_version}")
+            whl_version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", whl_file.stem)
+            if library_version == whl_version:
+                logger.info(
+                    f"{library_name} {library_version} is already installed, skip install {library_name}"
+                )
+                continue
+            logger.info(f"Installing {library_name} {whl_version}")
             install_result = Command(
                 [
                     pip_path.as_posix(),
@@ -71,11 +125,12 @@ class Installer:
             ).run(original=True)
             if install_result.returncode != 0:
                 logger.error(
-                    f"Failed to install {whl_file.as_posix()}: {install_result.stderr}"
+                    f"Failed to install {library_name}: {install_result.stderr}"
                 )
             else:
-                logger.info(f"Installed {whl_file.as_posix()}")
-
+                logger.info(f"Installed {library_name}")
+        # 设置版本号
+        self._set_version()
         # 启动服务
         self._start_service("apscheduler")
         self._start_service("cdm")
@@ -90,9 +145,22 @@ class Installer:
             logger.info(f"airflow is not installed, skip install airflow")
             return
         whl_files = self._get_whl_files(
-            ["aio-*.whl", "aio_public_module-*.whl", "aio_tasks-*.whl", "tasks-*.whl"]
+            ["aio_public_module-*.whl", "aio_tasks-*.whl", "tasks-*.whl"]
         )
         for whl_file in whl_files:
+            library_name = whl_file.stem.split("-")[0]
+            library_version = self._get_python_library_version(pip_path, library_name)
+            if library_version == "":
+                logger.error(f"Failed to get {library_name} version")
+                library_version = "0.0"
+            logger.info(f"Library version: {library_name} {library_version}")
+            whl_version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", whl_file.stem)
+            if library_version == whl_version:
+                logger.info(
+                    f"{library_name} {library_version}  is already installed, skip install {library_name}"
+                )
+                continue
+            logger.info(f"Installing {library_name} {whl_version}")
             install_result = Command(
                 [
                     pip_path.as_posix(),
@@ -104,10 +172,10 @@ class Installer:
             ).run(original=True)
             if install_result.returncode != 0:
                 logger.error(
-                    f"Failed to install {whl_file.as_posix()}: {install_result.stderr}"
+                    f"Failed to install {library_name}: {install_result.stderr}"
                 )
             else:
-                logger.info(f"Installed {whl_file.as_posix()}")
+                logger.info(f"Installed {library_name}")
 
         # server和worker上同时存在airflow服务，Server上不启动worker上特有服务
         if Path("/opt/aio/cdm/bin/pip3").exists():
