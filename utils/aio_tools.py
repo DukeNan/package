@@ -80,7 +80,7 @@ TOOLS: List[Dict[str, Any]] = [
         "command": ["$path", "show", "aio-tasks"],
         "processes_command": None,
         "kill_processes_command": None,
-        "parse": lambda out: parse_version(r"Version:\s*(\d+\.\d+\.\d+)", out),
+        "parse": lambda out: parse_version(r"Version:\s*(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": None,
     },
     {
@@ -89,7 +89,7 @@ TOOLS: List[Dict[str, Any]] = [
         "command": ["$path", "show", "aio"],
         "processes_command": None,
         "kill_processes_command": None,
-        "parse": lambda out: parse_version(r"Version:\s*(\d+\.\d+\.\d+)", out),
+        "parse": lambda out: parse_version(r"Version:\s*(\d+\.\d+\.\d+\.\d+)", out),
         "replace_dirs": None,
     },
     {
