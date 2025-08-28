@@ -144,6 +144,7 @@ class Installer:
         """
         初始化服务
         """
+        logger.info("Initializing service: aio.service")
         Command(["systemctl", "start", "aio.service"]).run(original=True, display=True)
 
     def run(self) -> None:

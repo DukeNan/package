@@ -106,14 +106,14 @@ class Installer:
             if library_version == "":
                 logger.error(f"Failed to get {library_name} version")
                 library_version = "0.0.0"
-            logger.info(f"Library version: {library_name} {library_version}")
+            logger.info(f"Current {library_name} version: {library_version}")
             whl_version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", whl_file.stem)
-            if library_version == whl_version:
+            if library_version >= whl_version:
                 logger.info(
                     f"{library_name} {library_version} is already installed, skip install {library_name}"
                 )
                 continue
-            logger.info(f"Installing {library_name} {whl_version}")
+            logger.info(f"Installing {library_name} new version: {whl_version}")
             install_result = Command(
                 [
                     pip_path.as_posix(),
