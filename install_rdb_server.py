@@ -17,16 +17,6 @@ class Installer:
         self.host_environment_detection = HostEnvironmentDetection()
         self.is_first_install = False
 
-    def _check_host_type(self) -> bool:
-        """
-        检查主机类型,
-        如果是 aio_server 主机, 则返回 True, 否则返回 False
-        """
-        if Path("/opt/aio/cdm").exists():
-            return True
-        logger.error("This is not a aio_server host.")
-        return False
-
     def _verify_package(self) -> bool:
         try:
             package_builder = PackageBuilder()
@@ -157,8 +147,6 @@ class Installer:
         Command(["systemctl", "start", "aio.service"]).run(original=True, display=True)
 
     def run(self) -> None:
-        if not self._check_host_type():
-            return
         if not self.host_environment_detection.check():
             return
         if self._check_rpm_installed():
