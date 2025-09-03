@@ -1,4 +1,3 @@
-import subprocess
 import tarfile
 from pathlib import Path
 

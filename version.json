@@ -1,4 +1,5 @@
 {
-    "package_name": "rdb_server_5.7.1.0_3.10.0-1160.el7.x86_64",
-    "package_type": "update_agent"
+    "package_name": "update_code_5.7.1.0_3.10.0-1160.el7.x86_64",
+    // 当前安装包的类型, 可选值为 constant.PackageTypeEnum中的值
+    "package_type": "install_update_code"
 }

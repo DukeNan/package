@@ -36,12 +36,12 @@ class Installer:
 
     def _set_version(self) -> None:
         """
-        设置版本号, 将当前的大版本号设置到aio.env文件中
+        设置版本号, 将当前的大版本号设置到cdm.runtime.env文件中
         """
         version = self._get_current_version()
-        env_file = Path("/opt/aio/cfg/aio.env")
+        env_file = Path("/opt/aio/cfg/cdm.runtime.env")
         if not env_file.exists():
-            logger.error(f"aio.env file not found: {env_file.as_posix()}")
+            logger.error(f"cdm.runtime.env file not found: {env_file.as_posix()}")
             return
         content = env_file.read_text(encoding="utf-8")
         content = re.sub(r"^AIO_VERSION=.*\n?", "", content, flags=re.M)
