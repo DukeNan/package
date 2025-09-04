@@ -176,10 +176,10 @@ class Installer:
         if not self._extract_tar_gz():
             return
         self._install_rpm()
-        self._start_aio_speedd()
         self._replace_aio_env()
-        self._init_service()
         self._save_changelog()
+        self._start_aio_speedd()
+        self._init_service()
 
 
 if __name__ == "__main__":
