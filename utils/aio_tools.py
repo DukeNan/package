@@ -11,7 +11,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from packaging.version import parse as parseVersion
 from tabulate import tabulate
 
-from constants import FS_BACKUP_KERNEL_NAME, KERNEL_VERSION, PROJECT_DIR, TOOLS_PATH
+from constants import (
+    FS_BACKUP_KERNEL_NAME,
+    KERNEL_VERSION,
+    PROJECT_DIR,
+    TOOLS_PATH,
+    PackageFilenameEnum,
+)
 from utils.command import Command
 from utils.log_base import COLORS, logger
 
@@ -802,7 +808,7 @@ class ToolsHandler:
         Returns:
             dict: 工具版本信息
         """
-        result = dict()
+        result: Dict[str, str] = dict()
         for tool in tools:
             if tool.name in exclude_tools:
                 continue
@@ -811,6 +817,35 @@ class ToolsHandler:
             tool_command = ToolCommand(tool)
             version = tool_command.get_version()
             result[tool.name] = version or ""
+        return result
+
+    def _get_tools_version_by_file(self, file_path: Path) -> Dict[str, str]:
+        """
+        获取工具版本信息，通过文件内容获取
+        Args:
+            file_path: 文件路径
+        Returns:
+            dict: 工具版本信息
+        """
+        result: Dict[str, str] = dict()
+        if not file_path.exists():
+            return result
+        tool_names = [tool.name for tool in self.tools]
+        content = file_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'").strip()  # 去掉引号
+                if key not in tool_names:
+                    logger.warning(
+                        f"tool {key} is not in tools list, please check the tools version file."
+                    )
+                    continue
+                result[key] = value
         return result
 
     def check_process(
@@ -892,9 +927,11 @@ class ToolsHandler:
         """
         比较目标端工具版本信息
         """
-        result = dict()
+        result: Dict[str, Dict[str, object]] = dict()
         # 安装包中工具版本信息
-        package_tools_version = self._get_tools_version(self.package_tools)
+        package_tools_version = self._get_tools_version_by_file(
+            PROJECT_DIR.joinpath(PackageFilenameEnum.TOOLS_VERSION.value)
+        )
         # 目标端工具版本信息
         target_tools_version = self._get_tools_version(self.tools)
         # 比较工具版本信息
