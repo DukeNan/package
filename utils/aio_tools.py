@@ -330,7 +330,7 @@ TOOLS: List[Dict[str, Any]] = [
         "command": ["$path", "--version"],
         "processes_command": None,
         "kill_processes_command": None,
-        "parse": lambda out: parse_version(r"-(\d+\.\d+\.\d+\-\d+)", out),
+        "parse": lambda out: parse_version(r"-(\d+\.\d+\.\d+)", out),
         "replace_dirs": [
             {
                 "path": "{tools_path}/s3-tools/{arch}/zfs",

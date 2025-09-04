@@ -40,3 +40,5 @@ class PackageFilenameEnum(str, Enum):
     INSTALL = "install"
     BUILD = "build.py"
     PARSER = "parser.py"
+    CHANGELOG_UPDATER = "changelog-updater.py"
+    CHANGELOG_UPDATER_BINARY = "changelog-updater"

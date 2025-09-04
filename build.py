@@ -2,6 +2,7 @@ import os
 import shutil
 import tarfile
 from pathlib import Path
+from typing import Optional
 
 from constants import PROJECT_DIR, PackageFilenameEnum, PackageTypeEnum
 from utils.command import Command
@@ -31,31 +32,49 @@ class BuildPackage:
         else:
             raise Exception(f"Invalid package type: {package_type}")
 
-    def build_binary(self) -> Path:
+    def build_binary(self, py_script_name: Optional[str] = None) -> Path:
         """
         编译成二进制文件
         使用 PyInstaller 编译成二进制文件
-        将
+        将 py_script_name 编译成二进制文件
             - install_rdb_agent.py
             - install_rdb_server.py
             - install_rdb_worker.py
             - install_update_code.py
             - install_update_agent.py
         编译成二进制文件
+        for example:
+            pyinstaller --onefile install_rdb_server.py -> dist/install_rdb_server
+        Args:
+            py_script_name: 需要编译的 py 脚本名称
+        Returns:
+            Path: 二进制文件路径
         """
-        install_script_name = self.install_script.split(".")[0]
+        if py_script_name is None:
+            binary_file_name = Path(self.install_script).stem
+            py_script_name = self.install_script
+        else:
+            binary_file_name = Path(py_script_name).stem
+
         pyinstaller_path = shutil.which("pyinstaller")
         if not pyinstaller_path:
             raise Exception("pyinstaller not found")
-        command = Command([pyinstaller_path, "--onefile", self.install_script])
+
+        # At this point, py_script_name is guaranteed to be a string
+        command = Command([pyinstaller_path, "--onefile", py_script_name])
         result = command.run(original=True, display=True)
         if result.returncode != 0:
             raise Exception(f"Failed to build binary: {result.stderr}")
-        return Path(PROJECT_DIR).joinpath("dist/{}".format(install_script_name))
+        return Path(PROJECT_DIR).joinpath("dist", binary_file_name)
 
-    def build_tar_gz(self, install_binary_path: Path):
+    def build_tar_gz(
+        self, install_binary_path: Path, changelog_updater_binary_path: Path
+    ):
         """
         构建 tar.gz 包
+        Args:
+            install_binary_path: 安装二进制文件路径
+            changelog_updater_binary_path: changelog-updater 二进制文件路径
         """
         # 构建包
         base_dir = self._builder.package_name.replace(".tar.gz", "")
@@ -65,6 +84,12 @@ class BuildPackage:
             tar.add(
                 install_binary_path,
                 arcname=Path(base_dir).joinpath(PackageFilenameEnum.INSTALL.value),
+            )
+            tar.add(
+                changelog_updater_binary_path,
+                arcname=Path(base_dir).joinpath(
+                    PackageFilenameEnum.CHANGELOG_UPDATER_BINARY.value
+                ),
             )
 
     def clean_dist(self):
@@ -90,8 +115,12 @@ class BuildPackage:
         self._builder.encrypt_verify_file()
         # 构建二进制文件 install
         install_binary_path = self.build_binary()
+        # 构建 changelog-updater 二进制文件
+        changelog_updater_binary_path = self.build_binary(
+            PackageFilenameEnum.CHANGELOG_UPDATER.value
+        )
         # 构建 tar.gz 包
-        self.build_tar_gz(install_binary_path)
+        self.build_tar_gz(install_binary_path, changelog_updater_binary_path)
         self.clean_dist()
 
 

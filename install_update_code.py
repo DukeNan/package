@@ -184,6 +184,25 @@ class Installer:
         self._start_service("task_log")
         self._start_service("worker")
 
+    def _save_changelog(self) -> None:
+        """
+        保存 changelog
+        """
+        changelog_updater_binary_path = Path(PROJECT_DIR).joinpath(
+            PackageFilenameEnum.CHANGELOG_UPDATER_BINARY.value
+        )
+        if not changelog_updater_binary_path.exists():
+            logger.error(
+                f"changelog-updater binary not found: {changelog_updater_binary_path.as_posix()}"
+            )
+            return
+        Command([changelog_updater_binary_path.as_posix(), "record"]).run(
+            original=True, display=True
+        )
+        Command([changelog_updater_binary_path.as_posix(), "update"]).run(
+            original=True, display=True
+        )
+
     def _install_code(self) -> None:
         self._install_cdm()
         self._install_airflow()
@@ -196,6 +215,7 @@ class Installer:
         if not self._extract_tar_gz():
             return
         self._install_code()
+        self._save_changelog()
 
 
 if __name__ == "__main__":

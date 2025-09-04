@@ -140,12 +140,31 @@ class Installer:
         aio_env_file.write_text(content, encoding="utf-8")
         logger.info(f"{aio_env_file.as_posix()} is modified")
 
-    def init_service(self) -> None:
+    def _init_service(self) -> None:
         """
         初始化服务
         """
         logger.info("Initializing service: aio.service")
         Command(["systemctl", "start", "aio.service"]).run(original=True, display=True)
+
+    def _save_changelog(self) -> None:
+        """
+        保存 changelog
+        """
+        changelog_updater_binary_path = Path(PROJECT_DIR).joinpath(
+            PackageFilenameEnum.CHANGELOG_UPDATER_BINARY.value
+        )
+        if not changelog_updater_binary_path.exists():
+            logger.error(
+                f"changelog-updater binary not found: {changelog_updater_binary_path.as_posix()}"
+            )
+            return
+        Command([changelog_updater_binary_path.as_posix(), "record"]).run(
+            original=True, display=True
+        )
+        Command([changelog_updater_binary_path.as_posix(), "update"]).run(
+            original=True, display=True
+        )
 
     def run(self) -> None:
         if not self.host_environment_detection.check():
@@ -159,7 +178,8 @@ class Installer:
         self._install_rpm()
         self._start_aio_speedd()
         self._replace_aio_env()
-        self.init_service()
+        self._init_service()
+        self._save_changelog()
 
 
 if __name__ == "__main__":

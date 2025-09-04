@@ -80,6 +80,25 @@ class Installer:
             logger.error(f"Failed to start aio-speedd: {result.stderr}")
         logger.info("aio-speedd is started")
 
+    def _save_changelog(self) -> None:
+        """
+        保存 changelog
+        """
+        changelog_updater_binary_path = Path(PROJECT_DIR).joinpath(
+            PackageFilenameEnum.CHANGELOG_UPDATER_BINARY.value
+        )
+        if not changelog_updater_binary_path.exists():
+            logger.error(
+                f"changelog-updater binary not found: {changelog_updater_binary_path.as_posix()}"
+            )
+            return
+        Command([changelog_updater_binary_path.as_posix(), "record"]).run(
+            original=True, display=True
+        )
+        Command([changelog_updater_binary_path.as_posix(), "update"]).run(
+            original=True, display=True
+        )
+
     def run(self) -> None:
         if not self._check_host_type():
             return
@@ -93,6 +112,7 @@ class Installer:
             return
         self._install_rpm()
         self._start_aio_speedd()
+        self._save_changelog()
 
 
 if __name__ == "__main__":

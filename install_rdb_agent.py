@@ -2,11 +2,13 @@ import argparse
 import json
 import sys
 import tarfile
+from pathlib import Path
 from typing import Callable
 
 from constants import PROJECT_DIR, PackageFilenameEnum, PackageTypeEnum
 from utils.aio_tools import ToolsHandler
 from utils.check import HostEnvironmentDetection
+from utils.command import Command
 from utils.log_base import logger
 from utils.verify import PackageBuilder
 
@@ -65,6 +67,25 @@ class Installer:
         if func() != result:
             sys.exit(1)
 
+    def _save_changelog(self) -> None:
+        """
+        保存 changelog
+        """
+        changelog_updater_binary_path = Path(PROJECT_DIR).joinpath(
+            PackageFilenameEnum.CHANGELOG_UPDATER_BINARY.value
+        )
+        if not changelog_updater_binary_path.exists():
+            logger.error(
+                f"changelog-updater binary not found: {changelog_updater_binary_path.as_posix()}"
+            )
+            return
+        Command([changelog_updater_binary_path.as_posix(), "record"]).run(
+            original=True, display=True
+        )
+        Command([changelog_updater_binary_path.as_posix(), "update"]).run(
+            original=True, display=True
+        )
+
     def run(self) -> None:
         if not self.host_environment_detection.check():
             return
@@ -75,6 +96,7 @@ class Installer:
         self._func_verify(self._verify_package, True)
         self._func_verify(self._extract_tar_gz, True)
         self.install_or_update_tools()
+        self._save_changelog()
         self.tools_handler.print_tools_version()
         self.tools_handler.check_process(ignore_warning=True)
 
