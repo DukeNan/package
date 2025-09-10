@@ -87,7 +87,7 @@ class Installer:
         )
 
     def run(self) -> None:
-        if not self.host_environment_detection.check():
+        if not self.host_environment_detection.check(check_os_release=False):
             return
         if self.force:
             self.tools_handler.kill_background_processes(exclude_tools=["kernel"])

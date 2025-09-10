@@ -208,7 +208,7 @@ class Installer:
         self._install_airflow()
 
     def run(self) -> None:
-        if not self.host_environment_detection.check():
+        if not self.host_environment_detection.check(check_os_release=False):
             return
         if not self._verify_package():
             return

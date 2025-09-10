@@ -119,16 +119,17 @@ class HostEnvironmentDetection:
             )
             return False
 
-    def check(self) -> bool:
+    def check(self, check_os_release: bool = True) -> bool:
         logger.info(
             f"To initialize the installation or upgrade, the following conditions must be met:"
         )
         is_arch_supported = self._check_arch()
         if not is_arch_supported:
             return False
-        is_os_release_supported = self._check_os_release()
-        if not is_os_release_supported:
-            return False
+        if check_os_release:
+            is_os_release_supported = self._check_os_release()
+            if not is_os_release_supported:
+                return False
         is_disk_space_enough = self._check_disk_space()
         if not is_disk_space_enough:
             return False
