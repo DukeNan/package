@@ -46,6 +46,56 @@ class HostEnvironmentDetection:
             )
             return False
 
+    def _get_os_release(self) -> str:
+        """
+        获取操作系统版本， centos, bclinux
+        """
+        os_release_files = [
+            Path("/etc/os-release"),
+            Path("/etc/redhat-release"),
+            Path("/etc/lsb-release"),
+        ]
+        for os_release_file in os_release_files:
+            if not os_release_file.exists():
+                continue
+            for line in os_release_file.read_text(encoding="utf-8").splitlines():
+                if "=" in line:
+                    key, value = line.strip().split("=", 1)
+                    if key.strip().upper() == "ID":
+                        return value.strip().strip('"').strip("'").strip().lower()
+        return ""
+
+    def _check_os_release(self) -> bool:
+        """
+        检查操作系统版本, centos, bclinux
+        """
+        # aarch64 不需要检查 os_release
+        if self.arch == "aarch64":
+            logger.info(
+                f"arch supported, arch: {self.arch}, no need to check os_release"
+            )
+            return True
+        version_file = PROJECT_DIR.joinpath(PackageFilenameEnum.VERSION.value)
+        data = json.loads(version_file.read_text(encoding="utf-8"))
+        package_name = data.get("package_name")
+        if not package_name:
+            logger.error(f"package_name not found in {version_file}")
+            return False
+        os_release = self._get_os_release()
+        if not os_release:
+            logger.error(f"os_release not found")
+            return False
+        if os_release in package_name:
+            logger.info(
+                f"os_release supported, os_release: {os_release}, package_name: {package_name}"
+            )
+            return True
+        else:
+            logger.error(
+                f"os_release not supported, os_release: {os_release}, package_name: {package_name}"
+            )
+            return False
+
     def _check_disk_space(self) -> bool:
         """
         检查磁盘空间, >5G 返回 True, 否则返回 False
@@ -75,6 +125,9 @@ class HostEnvironmentDetection:
         )
         is_arch_supported = self._check_arch()
         if not is_arch_supported:
+            return False
+        is_os_release_supported = self._check_os_release()
+        if not is_os_release_supported:
             return False
         is_disk_space_enough = self._check_disk_space()
         if not is_disk_space_enough:

@@ -145,7 +145,8 @@ class Installer:
         初始化服务
         """
         logger.info("Initializing service: aio.service")
-        Command(["systemctl", "start", "aio.service"]).run(original=True, display=True)
+        Command(["rdb", "init"]).run(original=True, display=True)
+        Command(["rdb", "start"]).run(original=True, display=True)
 
     def _save_changelog(self) -> None:
         """

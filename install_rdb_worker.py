@@ -141,10 +141,7 @@ class Installer:
         初始化服务
         """
         logger.info("Initializing service: aio.service")
-        Command(["systemctl", "start", "aio.airflow.init.service"]).run(
-            original=True, display=True
-        )
-        Command(["systemctl", "restart", "aio.worker.service"]).run(
+        Command(["systemctl", "restart", "aio.airflow.init.service"]).run(
             original=True, display=True
         )
 
