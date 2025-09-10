@@ -148,7 +148,7 @@ class Installer:
     def run(self) -> None:
         if not self._check_host_type():
             return
-        if not self.host_environment_detection.check():
+        if not self.host_environment_detection.check(check_os_release=False):
             return
         if self._check_rpm_installed():
             return

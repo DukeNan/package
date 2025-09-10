@@ -22,7 +22,7 @@ class Installer:
 
     def _get_current_version(self) -> str:
         """
-        获取当前大版本号, 例如 5.4.1.0 返回 5.4.1，从package_name中获取
+        获取当前大版本号, 例如 5.4.1.0 ，从package_name中获取
         """
         package_name = self._package_builder.config.get("package_name")
         if not package_name:
@@ -85,7 +85,7 @@ class Installer:
     def _get_python_library_version(self, pip_path: Path, library_name: str) -> str:
         result = Command([pip_path.as_posix(), "show", library_name]).run(original=True)
         if result.returncode != 0:
-            logger.error(f"Failed to get {library_name} version: {result.stderr}")
+            logger.info(f"Failed to get {library_name} version: {result.stderr}")
             return ""
         return parse_version(r"Version:\s*(\d+\.\d+\.\d+\.\d+)", result.stdout)
 
@@ -104,8 +104,10 @@ class Installer:
             library_name = whl_file.stem.split("-")[0]
             library_version = self._get_python_library_version(pip_path, library_name)
             if library_version == "":
-                logger.error(f"Failed to get {library_name} version")
                 library_version = "0.0.0"
+                logger.info(
+                    f"Failed to get {library_name} version, default to {library_version}"
+                )
             logger.info(f"Current {library_name} version: {library_version}")
             whl_version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", whl_file.stem)
             if library_version >= whl_version:
@@ -151,8 +153,10 @@ class Installer:
             library_name = whl_file.stem.split("-")[0]
             library_version = self._get_python_library_version(pip_path, library_name)
             if library_version == "":
-                logger.error(f"Failed to get {library_name} version")
-                library_version = "0.0"
+                library_version = "0.0.0"
+                logger.info(
+                    f"Failed to get {library_name} version, default to {library_version}"
+                )
             logger.info(f"Library version: {library_name} {library_version}")
             whl_version = parse_version(r"(\d+\.\d+\.\d+\.\d+)", whl_file.stem)
             if library_version == whl_version:
