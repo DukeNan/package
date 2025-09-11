@@ -69,12 +69,6 @@ class HostEnvironmentDetection:
         """
         检查操作系统版本, centos, bclinux
         """
-        # aarch64 不需要检查 os_release
-        if self.arch == "aarch64":
-            logger.info(
-                f"arch supported, arch: {self.arch}, no need to check os_release"
-            )
-            return True
         version_file = PROJECT_DIR.joinpath(PackageFilenameEnum.VERSION.value)
         data = json.loads(version_file.read_text(encoding="utf-8"))
         supported_os_releases = data.get("os_release")
