@@ -77,22 +77,22 @@ class HostEnvironmentDetection:
             return True
         version_file = PROJECT_DIR.joinpath(PackageFilenameEnum.VERSION.value)
         data = json.loads(version_file.read_text(encoding="utf-8"))
-        package_name = data.get("package_name")
-        if not package_name:
-            logger.error(f"package_name not found in {version_file}")
+        supported_os_releases = data.get("os_release")
+        if not supported_os_releases:
+            logger.error(f"os_release config not found in {version_file}")
             return False
         os_release = self._get_os_release()
         if not os_release:
-            logger.error(f"os_release not found")
+            logger.error(f"current os_release not found")
             return False
-        if os_release in package_name:
+        if os_release in supported_os_releases:
             logger.info(
-                f"os_release supported, os_release: {os_release}, package_name: {package_name}"
+                f"os_release supported, current os_release: {os_release}, supported_os_releases: {supported_os_releases}"
             )
             return True
         else:
             logger.error(
-                f"os_release not supported, os_release: {os_release}, package_name: {package_name}"
+                f"os_release not supported, curos_release: {os_release}, supported_os_releases: {supported_os_releases}"
             )
             return False
 
