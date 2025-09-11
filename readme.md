@@ -18,7 +18,7 @@ pip3 install -r requirements.txt
   - install_rdb_agent：安装rdb agent
   - install_update_code：代码patch包
   - install_update_agent：agent工具patch包
-- os_release：Linux发行版本(centos|bclinux)，同时支持多个配置用英文逗号隔开，
+- os_release：Linux发行版本(centos|bclinux)，同时支持多个配置用英文逗号隔开
   - 从操作系统中查看`cat /etc/os-release ` 其中`ID="centos"`
 
 ```shell
@@ -76,8 +76,7 @@ cat version.json
    ├── aio-5.5.1.0-py3-none-any.whl
    ├── aio_public_module-1.0-py3-none-any.whl
    ├── aio_tasks-5.5.1.0rc1.dev149+g44dce80.d20250814-py3-none-any.whl
-   ├── tasks-5.5.1.0rc1.dev149+g44dce80.d20250814-py3-none-any.whl
-   └── tools
+   └── tasks-5.5.1.0rc1.dev149+g44dce80.d20250814-py3-none-any.whl
    ```
 
 #### 运行打包命令
